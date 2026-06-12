@@ -43,6 +43,11 @@ fn cast_commit<'l, const T: Tu>(
     // The sequencer writes across P = 256 slices.
     input.cast::<bf16, m![N # 16]>().commit(0)
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let c: ContractTensor<'_, _, f32, m![1], m![1], m![P], m![M], m![N]> = ContractTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = cast_commit(c);
 ```
 
 ## Commit Adapter
@@ -103,6 +108,20 @@ fn i4_no_truncation_with_transpose<'l, const T: Tu>(
     // No truncation; valid_size = 64.
     input.commit(0)
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let c: CastTensor<'_, _, i8, m![1], m![1], m![1], m![M, K], m![W # 32]> = CastTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = i8_padding_truncation(c);
+# 
+# let c: ContractTensor<'_, _, f32, m![1], m![1], m![1], m![M, K], m![W]> = ContractTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = f32_non_padding_truncation(c);
+# 
+# let c: CastTensor<'_, _, bf16, m![1], m![1], m![1], m![M, K], m![N]> = CastTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = bf16_truncation_with_transpose(c);
+# 
+# let c: CastTensor<'_, _, i4, m![1], m![1], m![1], m![M, K], m![J]> = CastTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = i4_no_truncation_with_transpose(c);
 ```
 
 ### Type Casting
@@ -135,6 +154,11 @@ fn cast_commit<'l, const T: Tu>(
     // W = 8 f32 elements (32 bytes) → 8 bf16 elements padded to 16 (32 bytes).
     input.commit_cast(0)
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let c: ContractTensor<'_, _, f32, m![1], m![1], m![1], m![N, C, H], m![W]> = ContractTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = cast_commit(c);
 ```
 
 #### Conversion with ReLU (`f32` to `bf16`)
@@ -155,6 +179,11 @@ fn cast_relu_commit<'l, const T: Tu>(
     // e.g., [-5.0, -0.1, 0.0, 3.7] → [0.0, 0.0, 0.0, 3.7]
     input.commit_cast_relu(0)
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let c: ContractTensor<'_, _, f32, m![1], m![1], m![1], m![N, C, H], m![W]> = ContractTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = commit_cast_relu(c);
 ```
 
 ### Valid Count Packing
@@ -205,6 +234,11 @@ fn no_transpose<'l, const T: Tu>(
 ) -> DmTensor<i8, m![1], m![1], m![1], m![M, K, W]> {
     input.commit(0)
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let c: CastTensor<'_, _, i8, m![1], m![1], m![1], m![M, K], m![W # 32]> = CastTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = no_transpose(c);
 
 // Compiler-generated configuration: [
 //   M -> 4 : 8,   (8  != 2 * 32, NOT contiguous)
@@ -217,6 +251,9 @@ fn transpose<'l, const T: Tu>(
 ) -> DmTensor<f32, m![1], m![1], m![1], m![K, M, W]> {
     input.commit(0)
 }
+# 
+# let c: ContractTensor<'_, _, f32, m![1], m![1], m![1], m![M, K], m![W]> = ContractTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = transpose(c);
 
 // Compiler-generated configuration: [
 //   M -> 4 : 8,   (8  != 2 * 32, NOT contiguous)
@@ -229,6 +266,9 @@ fn transpose_with_truncation<'l, const T: Tu>(
 ) -> DmTensor<bf16, m![1], m![1], m![1], m![K, M, N = 8]> {
     input.commit(0)
 }
+# 
+# let c: CastTensor<'_, _, bf16, m![1], m![1], m![1], m![M, K], m![N]> = CastTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = transpose_with_truncation(c);
 
 // Compiler-generated configuration: [
 //   K -> 2 : 64,  (64 == 4 * 16, contiguous)
@@ -247,6 +287,9 @@ fn padding_chunking<'l, const T: Tu>(
 ) -> DmTensor<i8, m![1], m![1], m![1], m![K, M, W # 16]> {
     input.commit(0)
 }
+# 
+# let c: CastTensor<'_, _, i8, m![1], m![1], m![1], m![K], m![M, W]> = CastTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = padding_chunking(c);
 ```
 
 ### Slice Bitmap

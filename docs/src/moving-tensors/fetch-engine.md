@@ -35,13 +35,18 @@ Here `D2 = i32`, `Time2 = m![A]`, and `Packet2 = m![B]`.
 # #![feature(adt_const_params)]
 # extern crate furiosa_opt_std;
 # use furiosa_opt_std::prelude::*;
-axes![CH = 4, CL = 2, S = 256, A = 512, B = 32];
+axes![CH = 4, CL = 2, S = 256, A = 8, B = 32];
 
 fn fetch_matrix_example<'l, const T: Tu>(
     input: BeginTensor<'l, T, i8, m![CH], m![CL], m![S], m![1], m![A, B]>,
 ) -> FetchTensor<'l, T, i32, m![CH], m![CL], m![S], m![A], m![B]> {
     input.fetch()
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let b: BeginTensor<'_, _, i8, m![CH], m![CL], m![S], m![1], m![A, B]> = BeginTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = fetch_matrix_example(b);
 ```
 
 ## Fetch Sequencer
@@ -75,34 +80,48 @@ axes![N = 4, C = 3, H = 4, W = 8];
 /// Sequencer config: [N = 4 : 96, C = 3 : 32, H = 4 : 8, W = 8 : 1].
 /// access_size = 8; read_size = 8 (4 bytes); reads per packet = 1; cycles = 48
 fn fetch_batch_1<'l, const T: Tu>(
-    input: BeginTensor<'l, T, i4, m![1], m![1], m![1], m![1], m![N, C, H, W]>,
-) -> FetchTensor<'l, T, i4, m![1], m![1], m![1], m![N, C, H], m![W]> {
+    input: BeginTensor<'l, T, i8, m![1], m![1 # 2], m![1 # 256], m![1], m![N, C, H, W]>,
+) -> FetchTensor<'l, T, i8, m![1], m![1 # 2], m![1 # 256], m![N, C, H], m![W]> {
     input.fetch()
 }
 
 /// Sequencer config: [N = 4 : 96, C = 3 : 32, H / 2 = 2 : 16, H % 2 = 2 : 8, W = 8 : 1].
 /// access_size = 16; read_size = 16 (8 bytes); reads per packet = 1; cycles = 24
 fn fetch_batch_2<'l, const T: Tu>(
-    input: BeginTensor<'l, T, i4, m![1], m![1], m![1], m![1], m![N, C, H, W]>,
-) -> FetchTensor<'l, T, i4, m![1], m![1], m![1], m![N, C, H / 2], m![H % 2, W]> {
+    input: BeginTensor<'l, T, i8, m![1], m![1 # 2], m![1 # 256], m![1], m![N, C, H, W]>,
+) -> FetchTensor<'l, T, i8, m![1], m![1 # 2], m![1 # 256], m![N, C, H / 2], m![H % 2, W]> {
     input.fetch()
 }
 
 /// Sequencer config: [N = 4 : 96, C = 3 : 32, H = 4 : 8, W = 8 : 1].
 /// access_size = 32; read_size = 32 (16 bytes); reads per packet = 1; cycles = 12
 fn fetch_batch_3<'l, const T: Tu>(
-    input: BeginTensor<'l, T, i4, m![1], m![1], m![1], m![1], m![N, C, H, W]>,
-) -> FetchTensor<'l, T, i4, m![1], m![1], m![1], m![N, C], m![H, W]> {
+    input: BeginTensor<'l, T, i8, m![1], m![1 # 2], m![1 # 256], m![1], m![N, C, H, W]>,
+) -> FetchTensor<'l, T, i8, m![1], m![1 # 2], m![1 # 256], m![N, C], m![H, W]> {
     input.fetch()
 }
 
 /// Sequencer config: [N = 4 : 96, C = 3 : 32, H = 4 : 8, W = 8 : 1].
 /// access_size = 96; read_size = 32 (16 bytes); reads per packet = 3; cycles = 12
 fn fetch_batch_4<'l, const T: Tu>(
-    input: BeginTensor<'l, T, i4, m![1], m![1], m![1], m![1], m![N, C, H, W]>,
-) -> FetchTensor<'l, T, i4, m![1], m![1], m![1], m![N], m![C, H, W]> {
+    input: BeginTensor<'l, T, i8, m![1], m![1 # 2], m![1 # 256], m![1], m![N, C, H, W]>,
+) -> FetchTensor<'l, T, i8, m![1], m![1 # 2], m![1 # 256], m![N], m![C, H, W]> {
     input.fetch()
 }
+#
+# let mut ctx = Context::acquire();
+# 
+# let b: BeginTensor<'_, _, i8, m![1], m![1 # 2], m![1 # 256], m![1], m![N, C, H, W]> = BeginTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = fetch_batch_1(b);
+# 
+# let b: BeginTensor<'_, _, i8, m![1], m![1 # 2], m![1 # 256], m![1], m![N, C, H, W]> = BeginTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = fetch_batch_2(b);
+# 
+# let b: BeginTensor<'_, _, i8, m![1], m![1 # 2], m![1 # 256], m![1], m![N, C, H, W]> = BeginTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = fetch_batch_3(b);
+# 
+# let b: BeginTensor<'_, _, i8, m![1], m![1 # 2], m![1 # 256], m![1], m![N, C, H, W]> = BeginTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = fetch_batch_4(b);
 ```
 
 ### Interleaving
@@ -118,7 +137,7 @@ At most two tensors can be interleaved in a single fetch operation.
 # #![feature(adt_const_params)]
 # extern crate furiosa_opt_std;
 # use furiosa_opt_std::prelude::*;
-axes![A = 512, B = 32, I = 2];
+axes![A = 16, B = 32, I = 2];
 
 /// Interleaves two input tensors into a single packet stream.
 /// Useful for operations like 'input1 + input2' in the Vector Engine.
@@ -126,11 +145,17 @@ axes![A = 512, B = 32, I = 2];
 /// The `I = 2` axis in Time encodes alternation between the two tensors.
 fn fetch_interleaved<'l>(
     ctx: &'l mut Context,
-    lhs: &'l DmTensor<i8, m![1], m![1], m![1], m![A, B]>,
-    rhs: &'l DmTensor<i8, m![1], m![1], m![1], m![A, B]>,
-) -> FetchTensor<'l, { Tu::Main }, i8, m![1], m![1], m![1], m![A, I], m![B]> {
+    lhs: &'l DmTensor<i8, m![1], m![1 # 2], m![1 # 256], m![A, B]>,
+    rhs: &'l DmTensor<i8, m![1], m![1 # 2], m![1 # 256], m![A, B]>,
+) -> FetchTensor<'l, { Tu::Main }, i8, m![1], m![1 # 2], m![1 # 256], m![A, I], m![B]> {
     ctx.main.begin_interleaved::<I, _, _, _, _, _>(lhs.view(), rhs.view()).fetch()
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let lhs = unsafe { DmTensor::from_addr(0) };
+# let rhs = unsafe { DmTensor::from_addr(0) };
+# let _o = fetch_interleaved(&mut ctx, &lhs, &rhs);
 ```
 
 ### Optimizations
@@ -163,24 +188,35 @@ axes![A = 3, B = 5, C = 2];
 
 /// Smallest packet: only C dimension (2 bytes). Takes 15 cycles.
 fn fetch_packet_C<'l, const T: Tu>(
-    input: BeginTensor<'l, T, f8e4m3, m![1], m![1], m![1], m![1], m![A, B, C]>,
-) -> FetchTensor<'l, T, f8e4m3, m![1], m![1], m![1], m![A, B], m![C]> {
+    input: BeginTensor<'l, T, f8e4m3, m![1], m![1 # 2], m![1 # 256], m![1], m![A, B, C]>,
+) -> FetchTensor<'l, T, f8e4m3, m![1], m![1 # 2], m![1 # 256], m![A, B], m![C]> {
     input.fetch()
 }
 
 /// Medium packet: B and C dimensions padded to 16 bytes. Takes 3 cycles.
 fn fetch_packet_BC<'l, const T: Tu>(
-    input: BeginTensor<'l, T, f8e4m3, m![1], m![1], m![1], m![1], m![A, B, C]>,
-) -> FetchTensor<'l, T, f8e4m3, m![1], m![1], m![1], m![A], m![[B, C] # 16]> {
+    input: BeginTensor<'l, T, f8e4m3, m![1], m![1 # 2], m![1 # 256], m![1], m![A, B, C]>,
+) -> FetchTensor<'l, T, f8e4m3, m![1], m![1 # 2], m![1 # 256], m![A], m![[B, C] # 16]> {
     input.fetch()
 }
 
 /// Largest packet: all dimensions padded to 32 bytes. Takes 1 cycle.
 fn fetch_packet_ABC<'l, const T: Tu>(
-    input: BeginTensor<'l, T, f8e4m3, m![1], m![1], m![1], m![1], m![A, B, C]>,
-) -> FetchTensor<'l, T, f8e4m3, m![1], m![1], m![1], m![1], m![[A, B, C] # 32]> {
+    input: BeginTensor<'l, T, f8e4m3, m![1], m![1 # 2], m![1 # 256], m![1], m![A, B, C]>,
+) -> FetchTensor<'l, T, f8e4m3, m![1], m![1 # 2], m![1 # 256], m![1], m![[A, B, C] # 32]> {
     input.fetch()
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let b: BeginTensor<'_, _, f8e4m3, m![1], m![1 # 2], m![1 # 256], m![1], m![A, B, C]> = BeginTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = fetch_packet_C(b);
+# 
+# let b: BeginTensor<'_, _, f8e4m3, m![1], m![1 # 2], m![1 # 256], m![1], m![A, B, C]> = BeginTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = fetch_packet_BC(b);
+# 
+# let b: BeginTensor<'_, _, f8e4m3, m![1], m![1 # 2], m![1 # 256], m![1], m![A, B, C]> = BeginTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = fetch_packet_ABC(b);
 ```
 
 In these examples, padding reads beyond the actual data, but this is safe because padding values do not affect computation.
@@ -208,10 +244,15 @@ axes![A = 63];
 /// Pads 63 elements to 64 and masks the 64th to zero,
 /// so reductions compute correctly over the 63 valid elements.
 fn fetch_with_masking<'l, const T: Tu>(
-    input: BeginTensor<'l, T, i8, m![1], m![1], m![1], m![1], m![A]>,
-) -> FetchTensor<'l, T, i8, m![1], m![1], m![1], m![1], m![A # 64]> {
+    input: BeginTensor<'l, T, i8, m![1], m![1 # 2], m![1 # 256], m![1], m![A]>,
+) -> FetchTensor<'l, T, i8, m![1], m![1 # 2], m![1 # 256], m![1], m![A # 64]> {
     input.fetch()
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let b: BeginTensor<'_, _, i8, m![1], m![1 # 2], m![1 # 256], m![1], m![A]> = BeginTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = fetch_with_masking(b);
 ```
 
 #### Masking configuration
@@ -345,10 +386,15 @@ axes![A = 8];
 /// Input:   i8 [0, 1, 2, 3, 4, 5, 6, 7]
 /// Output: i32 [0, 1, 2, 3, 4, 5, 6, 7]
 fn fetch_with_type_cast<'l, const T: Tu>(
-    input: BeginTensor<'l, T, i8, m![1], m![1], m![1], m![1], m![A]>,
-) -> FetchTensor<'l, T, i32, m![1], m![1], m![1], m![1], m![A]> {
+    input: BeginTensor<'l, T, i8, m![1], m![1 # 2], m![1 # 256], m![1], m![A]>,
+) -> FetchTensor<'l, T, i32, m![1], m![1 # 2], m![1 # 256], m![1], m![A]> {
     input.fetch()
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let b: BeginTensor<'_, _, i8, m![1], m![1 # 2], m![1 # 256], m![1], m![A]> = BeginTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = fetch_with_type_cast(b);
 ```
 
 Type casting adds an additional limit on `read_size`: the cast output per fetch must fit in a single 32-byte flit (see [Collect Engine](../computing-tensors/collect-engine.md)).
