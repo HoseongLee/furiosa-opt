@@ -221,8 +221,8 @@ The `.tile()` method extracts a tile by resizing one dimension to the tile size 
 #
 let tensor = unsafe { HbmTensor::<bf16, m![1], m![A, B]>::from_addr(0) };
 let view = tensor.view(); // HbmTensorView::<'_, bf16, m![1], m![A, B]>
-let tile01 = view.tile::<m![B], 2, m![A, B = 2 # 512]>(0); // HbmTensorView::<'_, bf16, m![1], m![A, B = 2 # 4]>
-let tile23 = view.tile::<m![B], 2, m![A, B = 2 # 512]>(2); // HbmTensorView::<'_, bf16, m![1], m![A, B = 2 # 4]>
+let tile01 = view.tile::<m![B], 2, m![A, B = 2 # 512]>(0); // HbmTensorView::<'_, bf16, m![1], m![A, B = 2 # 512]>
+let tile23 = view.tile::<m![B], 2, m![A, B = 2 # 512]>(2); // HbmTensorView::<'_, bf16, m![1], m![A, B = 2 # 512]>
 ```
 
 The `.tile()` method takes three type parameters and one value parameter.
