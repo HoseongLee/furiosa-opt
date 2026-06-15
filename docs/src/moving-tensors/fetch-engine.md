@@ -70,57 +70,57 @@ Multi-read occurs whenever `Packet::SIZE > read_size`.
 For example, a 24-byte packet in the main-context forces `read_size = 8` and 3 reads per packet.
 The total cycle count is `Time::SIZE * (Packet::SIZE / read_size)`.
 
-The following examples fetch the same `i4` tensor of shape `m![N, C, H, W]` (with `N=4, C=3, H=4, W=8`) using four different `Packet2` choices.
+The following examples fetch the same `i4` tensor of shape `m![N, C, H, W]` (with `N=4, C=3, H=4, W=16`) using four different `Packet2` choices.
 ```rust
 # #![feature(adt_const_params)]
 # extern crate furiosa_opt_std;
 # use furiosa_opt_std::prelude::*;
-axes![N = 4, C = 3, H = 4, W = 8];
+axes![N = 4, C = 3, H = 4, W = 16];
 
-/// Sequencer config: [N = 4 : 96, C = 3 : 32, H = 4 : 8, W = 8 : 1].
-/// access_size = 8; read_size = 8 (4 bytes); reads per packet = 1; cycles = 48
+/// Sequencer config: [N = 4 : 192, C = 3 : 64, H = 4 : 16, W = 16 : 1].
+/// access_size = 16; read_size = 16 (8 bytes); reads per packet = 1; cycles = 48
 fn fetch_batch_1<'l, const T: Tu>(
-    input: BeginTensor<'l, T, i8, m![1], m![1 # 2], m![1 # 256], m![1], m![N, C, H, W]>,
-) -> FetchTensor<'l, T, i8, m![1], m![1 # 2], m![1 # 256], m![N, C, H], m![W]> {
+    input: BeginTensor<'l, T, i4, m![1], m![1 # 2], m![1 # 256], m![1], m![N, C, H, W]>,
+) -> FetchTensor<'l, T, i4, m![1], m![1 # 2], m![1 # 256], m![N, C, H], m![W]> {
     input.fetch()
 }
 
-/// Sequencer config: [N = 4 : 96, C = 3 : 32, H / 2 = 2 : 16, H % 2 = 2 : 8, W = 8 : 1].
-/// access_size = 16; read_size = 16 (8 bytes); reads per packet = 1; cycles = 24
+/// Sequencer config: [N = 4 : 192, C = 3 : 64, H / 2 = 2 : 32, H % 2 = 2 : 16, W = 16 : 1].
+/// access_size = 32; read_size = 32 (16 bytes); reads per packet = 1; cycles = 24
 fn fetch_batch_2<'l, const T: Tu>(
-    input: BeginTensor<'l, T, i8, m![1], m![1 # 2], m![1 # 256], m![1], m![N, C, H, W]>,
-) -> FetchTensor<'l, T, i8, m![1], m![1 # 2], m![1 # 256], m![N, C, H / 2], m![H % 2, W]> {
+    input: BeginTensor<'l, T, i4, m![1], m![1 # 2], m![1 # 256], m![1], m![N, C, H, W]>,
+) -> FetchTensor<'l, T, i4, m![1], m![1 # 2], m![1 # 256], m![N, C, H / 2], m![H % 2, W]> {
     input.fetch()
 }
 
-/// Sequencer config: [N = 4 : 96, C = 3 : 32, H = 4 : 8, W = 8 : 1].
-/// access_size = 32; read_size = 32 (16 bytes); reads per packet = 1; cycles = 12
+/// Sequencer config: [N = 4 : 192, C = 3 : 64, H = 4 : 16, W = 16 : 1].
+/// access_size = 64; read_size = 64 (32 bytes); reads per packet = 1; cycles = 12
 fn fetch_batch_3<'l, const T: Tu>(
-    input: BeginTensor<'l, T, i8, m![1], m![1 # 2], m![1 # 256], m![1], m![N, C, H, W]>,
-) -> FetchTensor<'l, T, i8, m![1], m![1 # 2], m![1 # 256], m![N, C], m![H, W]> {
+    input: BeginTensor<'l, T, i4, m![1], m![1 # 2], m![1 # 256], m![1], m![N, C, H, W]>,
+) -> FetchTensor<'l, T, i4, m![1], m![1 # 2], m![1 # 256], m![N, C], m![H, W]> {
     input.fetch()
 }
 
-/// Sequencer config: [N = 4 : 96, C = 3 : 32, H = 4 : 8, W = 8 : 1].
-/// access_size = 96; read_size = 32 (16 bytes); reads per packet = 3; cycles = 12
+/// Sequencer config: [N = 4 : 192, C = 3 : 64, H = 4 : 16, W = 16 : 1].
+/// access_size = 192; read_size = 64 (32 bytes); reads per packet = 3; cycles = 12
 fn fetch_batch_4<'l, const T: Tu>(
-    input: BeginTensor<'l, T, i8, m![1], m![1 # 2], m![1 # 256], m![1], m![N, C, H, W]>,
-) -> FetchTensor<'l, T, i8, m![1], m![1 # 2], m![1 # 256], m![N], m![C, H, W]> {
+    input: BeginTensor<'l, T, i4, m![1], m![1 # 2], m![1 # 256], m![1], m![N, C, H, W]>,
+) -> FetchTensor<'l, T, i4, m![1], m![1 # 2], m![1 # 256], m![N], m![C, H, W]> {
     input.fetch()
 }
 #
 # let mut ctx = Context::acquire();
 # 
-# let b: BeginTensor<'_, _, i8, m![1], m![1 # 2], m![1 # 256], m![1], m![N, C, H, W]> = BeginTensor::new(&mut ctx.main, Tensor::uninit());
+# let b: BeginTensor<'_, _, i4, m![1], m![1 # 2], m![1 # 256], m![1], m![N, C, H, W]> = BeginTensor::new(&mut ctx.main, Tensor::uninit());
 # let _o = fetch_batch_1(b);
 # 
-# let b: BeginTensor<'_, _, i8, m![1], m![1 # 2], m![1 # 256], m![1], m![N, C, H, W]> = BeginTensor::new(&mut ctx.main, Tensor::uninit());
+# let b: BeginTensor<'_, _, i4, m![1], m![1 # 2], m![1 # 256], m![1], m![N, C, H, W]> = BeginTensor::new(&mut ctx.main, Tensor::uninit());
 # let _o = fetch_batch_2(b);
 # 
-# let b: BeginTensor<'_, _, i8, m![1], m![1 # 2], m![1 # 256], m![1], m![N, C, H, W]> = BeginTensor::new(&mut ctx.main, Tensor::uninit());
+# let b: BeginTensor<'_, _, i4, m![1], m![1 # 2], m![1 # 256], m![1], m![N, C, H, W]> = BeginTensor::new(&mut ctx.main, Tensor::uninit());
 # let _o = fetch_batch_3(b);
 # 
-# let b: BeginTensor<'_, _, i8, m![1], m![1 # 2], m![1 # 256], m![1], m![N, C, H, W]> = BeginTensor::new(&mut ctx.main, Tensor::uninit());
+# let b: BeginTensor<'_, _, i4, m![1], m![1 # 2], m![1 # 256], m![1], m![N, C, H, W]> = BeginTensor::new(&mut ctx.main, Tensor::uninit());
 # let _o = fetch_batch_4(b);
 ```
 
@@ -186,10 +186,10 @@ The three examples below fetch the same 30-byte tensor in 15, 3, and 1 cycles by
 # use furiosa_opt_std::prelude::*;
 axes![A = 3, B = 5, C = 2];
 
-/// Smallest packet: only C dimension (2 bytes). Takes 15 cycles.
+/// Smallest packet: only C dimension padded to 8 bytes. Takes 15 cycles.
 fn fetch_packet_C<'l, const T: Tu>(
     input: BeginTensor<'l, T, f8e4m3, m![1], m![1 # 2], m![1 # 256], m![1], m![A, B, C]>,
-) -> FetchTensor<'l, T, f8e4m3, m![1], m![1 # 2], m![1 # 256], m![A, B], m![C]> {
+) -> FetchTensor<'l, T, f8e4m3, m![1], m![1 # 2], m![1 # 256], m![A, B], m![C # 8]> {
     input.fetch()
 }
 
