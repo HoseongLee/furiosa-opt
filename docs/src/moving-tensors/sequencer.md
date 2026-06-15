@@ -104,14 +104,6 @@ fn broadcasting_read<'l>(
 ) -> StreamTensor<'l, i8, m![T, A], m![P]> {
     buf.read()
 }
-
-/// Broadcasting write: write broadcast stream back to buffer.
-fn broadcasting_write(
-    buf: &mut BufTensor<i8, m![A]>,
-    stream: StreamTensor<i8, m![T, A], m![P]>,
-) {
-    buf.write(stream)
-}
 # // -----------------------------------------------------------------------------------
 # 
 # let buf_read = BufTensor::<bf16, m![A, B]>::from_buf(vec![bf16::from_f32(1f32); 8 * 512]);
@@ -139,10 +131,7 @@ fn broadcasting_write(
 # // -----------------------------------------------------------------------------------
 # 
 # let buf_read = BufTensor::<i8, m![A]>::from_buf(vec![1i8; 8 ]);
-# let mut buf_write = BufTensor::<i8, m![A]>::from_buf(vec![0i8; 8]);
-# 
-# let stream = broadcasting_read(&buf_read);
-# broadcasting_write(&mut buf_write, stream);
+# let _stream = broadcasting_read(&buf_read);
 # 
 # // -----------------------------------------------
 ```
