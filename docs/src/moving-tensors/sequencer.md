@@ -104,7 +104,16 @@ fn broadcasting_read<'l>(
 ) -> StreamTensor<'l, i8, m![T, A], m![P]> {
     buf.read()
 }
-# // -----------------------------------------------------------------------------------
+
+/// Broadcasting write: write broadcast stream back to buffer.
+/// This is rejected as each `Buf` slot must have exactly one source position in `(Time, Packet)`
+/// This code will panic when run
+fn broadcasting_write(
+    buf: &mut BufTensor<i8, m![A]>,
+    stream: StreamTensor<i8, m![T, A], m![P]>,
+) {
+    buf.write(stream)
+}
 # 
 # let buf_read = BufTensor::<bf16, m![A, B]>::from_buf(vec![bf16::from_f32(1f32); 8 * 512]);
 # let mut buf_write = BufTensor::<bf16, m![A, B]>::from_buf(vec![bf16::from_f32(1f32); 8 * 512]);
@@ -131,9 +140,14 @@ fn broadcasting_read<'l>(
 # // -----------------------------------------------------------------------------------
 # 
 # let buf_read = BufTensor::<i8, m![A]>::from_buf(vec![1i8; 8 ]);
-# let _stream = broadcasting_read(&buf_read);
+# let mut buf_write = BufTensor::<i8, m![A]>::from_buf(vec![0i8; 8 ]);
+#
+# let stream = broadcasting_read(&buf_read);
+# let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+#     broadcasting_write(&mut buf_write, stream);
+# }));
+# assert!(result.is_err()); 
 # 
-# // -----------------------------------------------
 ```
 
 ## Architecture
