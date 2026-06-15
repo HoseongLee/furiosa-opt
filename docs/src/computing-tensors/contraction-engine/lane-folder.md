@@ -29,7 +29,7 @@ OutPacket = [Lane # 8]
 # #![feature(adt_const_params)]
 # extern crate furiosa_opt_std;
 # use furiosa_opt_std::prelude::*;
-axes![N = 8, M = 4, P = 4];
+axes![N = 8, M = 4, P = 16];
 
 /// Lane folds into OutPacket.
 fn lane_interleaved<'l, const T: Tu>(
@@ -39,6 +39,18 @@ fn lane_interleaved<'l, const T: Tu>(
 ) -> ContractTensor<'l, T, f32, m![1], m![1], m![1], m![M, P], m![N]> {
     input.contract_lane::<m![M, P], m![N]>(LaneMode::Interleaved)
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let a: CollectTensor<'_, _, bf16, m![1], m![1], m![1], m![M], m![P]> = CollectTensor::new(&mut ctx.main, Tensor::uninit());
+# let b: TrfTensor<bf16, m![1], m![1], m![1], m![N], m![P]> = unsafe { TrfTensor::from_addr(TrfAddress::Full) };
+# 
+# let i: ContractTimeTensor<'_, _, f32, m![1], m![1], m![1], m![N], m![M], m![P]> = a 
+#     .contract_outer::<m![M], m![P], m![N], m![P]>(&b)
+#     .contract_packet::<m![P]>()
+#     .contract_time::<m![M]>();
+# 
+# let _o = lane_interleaved(i);
 ```
 
 ### Sequential
@@ -58,7 +70,7 @@ For `Packet::SIZE < 32`, `[PadPacket / 8]::SIZE = ceil(Packet::SIZE / 8)` is the
 # #![feature(adt_const_params)]
 # extern crate furiosa_opt_std;
 # use furiosa_opt_std::prelude::*;
-axes![N = 8, M = 4, P = 12];
+axes![N = 8, M = 4, P = 16];
 
 /// Lane folds into OutTime.
 fn lane_sequential<'l, const T: Tu>(
@@ -68,6 +80,18 @@ fn lane_sequential<'l, const T: Tu>(
 ) -> ContractTensor<'l, T, f32, m![1], m![1], m![1], m![M, N, P / 8], m![P % 8]> {
     input.contract_lane::<m![M, N, P / 8], m![P % 8]>(LaneMode::Sequential)
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let a: CollectTensor<'_, _, bf16, m![1], m![1], m![1], m![M], m![P]> = CollectTensor::new(&mut ctx.main, Tensor::uninit());
+# let b: TrfTensor<bf16, m![1], m![1], m![1], m![N], m![P]> = unsafe { TrfTensor::from_addr(TrfAddress::Full) };
+# 
+# let i: ContractTimeTensor<'_, _, f32, m![1], m![1], m![1], m![N], m![M], m![P]> = a 
+#     .contract_outer::<m![M], m![P], m![N], m![P]>(&b)
+#     .contract_packet::<m![P]>()
+#     .contract_time::<m![M]>();
+# 
+# let _o = lane_sequential(i);
 ```
 
 ## Constraints

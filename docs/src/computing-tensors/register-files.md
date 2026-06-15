@@ -53,6 +53,11 @@ fn store_bmatmul_trf<'l, const T: Tu>(
 ) -> TrfTensor<bf16, Chip, Cluster, Slice, Lane, m![K]> {
     input.to_trf(TrfAddress::FirstHalf)
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let c: CollectTensor<'_, _, bf16, Chip, Cluster, Slice, m![N, K / 16], m![K % 16]> = CollectTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = store_bmatmul_trf(c);
 ```
 
 #### From Data Memory
@@ -152,6 +157,11 @@ fn store_vrf<'l, const T: Tu>(
 ) -> VrfTensor<i32, m![1], m![1 # 2], m![1 # 256], m![B]> {
     input.to_vrf(0)
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let c: CollectTensor<'_, _, i32, m![1], m![1 # 2], m![1 # 256], m![B / 8], m![B % 8]> = CollectTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = store_vrf(c);
 ```
 
 #### From Data Memory

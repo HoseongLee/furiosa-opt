@@ -31,6 +31,11 @@ fn cast_i32_to_i8<'l, const T: Tu>(
 ) -> CastTensor<'l, T, i8, m![1], m![1], m![1], m![B], m![A # 32]> {
     input.cast()
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let c: CollectTensor<'_, _, i32, m![1], m![1], m![1], m![B], m![A]> = CollectTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = cast_i32_to_i8(c);
 ```
 
 The input data may not fill 32 bytes.
@@ -47,6 +52,11 @@ fn cast_padded<'l, const T: Tu>(
 ) -> CastTensor<'l, T, i8, m![1], m![1], m![1], m![1], m![A # 32]> {
     input.cast()
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let c: CollectTensor<'_, _, i32, m![1], m![1], m![1], m![1], m![A # 8]> = CollectTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = cast_padded(c);
 ```
 
 ## Supported Casts

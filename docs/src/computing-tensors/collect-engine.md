@@ -35,6 +35,11 @@ fn collect_identity<'l, const T: Tu>(
     // Time and Packet pass through unchanged.
     input.collect()
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let c: SwitchTensor<'_, _, i8, m![1], m![1], m![1], m![A], m![B]> = SwitchTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = collect_identity(c);
 ```
 
 When the input packet is already exactly 32 bytes, `collect` passes it through unchanged (`B = 32` elements × 1 byte for `i8` = 32 bytes).
@@ -69,6 +74,11 @@ fn collect_padding<'l, const T: Tu>(
     // Time unchanged since it fits in one flit.
     input.collect()
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let c: SwitchTensor<'_, _, i8, m![1], m![1], m![1], m![A], m![B]> = SwitchTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = collect_padding(c);
 ```
 
 When the input packet is smaller than 32 bytes, `collect` pads to 32 bytes (`B = 16` elements × 1 byte for `i8` = 16 bytes).
@@ -103,6 +113,11 @@ fn collect_multi_flit<'l, const T: Tu>(
     // Outer 2 flits → absorbed into Time2 = m![A, B / 16].
     input.collect()
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let c: SwitchTensor<'_, _, bf16, m![1], m![1], m![1], m![A], m![B]> = SwitchTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = collect_multi_flit(c);
 ```
 
 When the input packet exceeds 32 bytes, `collect` splits into flits and absorbs the outer flit count into Time (`B = 32` elements × 2 bytes for `bf16` = 64 bytes, so `B / 16 = 2` flits).
@@ -139,6 +154,11 @@ fn collect_multi_flit_padded<'l, const T: Tu>(
     // Outer 2 flits → absorbed into Time2 = m![A, B # 64 / 32].
     input.collect()
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let c: SwitchTensor<'_, _, i8, m![1], m![1], m![1], m![A], m![B]> = SwitchTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = collect_multi_flit_padded(c);
 ```
 
 When the input packet is not aligned to 32 bytes, it is first padded (`B = 51` elements × 1 byte for `i8` = 51 bytes, padded to 64).
@@ -194,6 +214,11 @@ fn load_trf<'l, const T: Tu>(
 ) -> TrfTensor<i8, m![1], m![1 # 2], m![1 # 256], m![1], m![B]> {
     input.to_trf(TrfAddress::Full)
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let c: CollectTensor<'_, _, i8, m![1], m![1 # 2], m![1 # 256], m![1], m![B]> = CollectTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = load_trf(c);
 ```
 
 ### To VRF
@@ -213,5 +238,10 @@ fn load_vrf<'l, const T: Tu>(
 ) -> VrfTensor<i32, m![1], m![1 # 2], m![1 # 256], m![B]> {
     input.to_vrf(0)
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let c: CollectTensor<'_, _, i32, m![1], m![1 # 2], m![1 # 256], m![B / 8], m![B % 8]> = CollectTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = load_vrf(c);
 ```
 

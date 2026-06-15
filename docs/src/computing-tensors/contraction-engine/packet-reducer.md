@@ -32,6 +32,12 @@ fn matmul<'l, const T: Tu>(
          .contract_time::<m![A]>()
          .contract_lane::<m![A], m![C]>(LaneMode::Interleaved)
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let a: CollectTensor<'_, _, bf16, m![1], m![1], m![1], m![A, B / 16], m![B % 16]> = CollectTensor::new(&mut ctx.main, Tensor::uninit());
+# let b: TrfTensor<bf16, m![1], m![1], m![1], m![C], m![B]> = unsafe { TrfTensor::from_addr(TrfAddress::Full) };
+# let _o = matmul(a, &b);
 ```
 
 ## Architecture

@@ -92,6 +92,12 @@ fn stream_adapter_example<'l, const T: Tu>(
     //   OutTime = [M, B = 5], OutPacket = [L = 2, K = 16].
     input.contract_outer::<m![M, B], m![L, K], _, _>(trf)
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let a: CollectTensor<'_, _, bf16, m![1], m![1], m![1], m![M, L], m![K]> = CollectTensor::new(&mut ctx.main, Tensor::uninit());
+# let b: TrfTensor<bf16, m![1], m![1], m![1], m![N], m![B, L, K]> = unsafe { TrfTensor::from_addr(TrfAddress::Full) };
+# let _o = stream_adapter_example(a, &b);
 ```
 
 ### Constraints
@@ -156,6 +162,12 @@ fn trf_sequencer_full_read<'l, const T: Tu>(
     // OutPacket       = K      (= [1, K % 32])
     input.contract_outer::<m![M], m![K], _, _>(trf)
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let a: CollectTensor<'_, _, bf16, m![1], m![1], m![1], m![M, K / 16], m![K % 16]> = CollectTensor::new(&mut ctx.main, Tensor::uninit());
+# let b: TrfTensor<bf16, m![1], m![1], m![1], m![N], m![K]> = unsafe { TrfTensor::from_addr(TrfAddress::Full) };
+# let _o = trf_sequencer_full_read(a, &b);
 ```
 
 In this example, `ReadSize` covers only part of `Element`, so `Element / ReadSize` is non-trivial and the sequencer iterates the outer `Element` factor alongside a broadcast:
@@ -177,6 +189,12 @@ fn trf_sequencer_partial_read<'l, const T: Tu>(
     // OutPacket       = [L, K]    (= [L, [O, K] % 16])
     input.contract_outer::<m![O, M], m![L, K], _, _>(trf)
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let a: CollectTensor<'_, _, bf16, m![1], m![1], m![1], m![O, M, L], m![K]> = CollectTensor::new(&mut ctx.main, Tensor::uninit());
+# let b: TrfTensor<bf16, m![1], m![1], m![1], m![N], m![O, K]> = unsafe { TrfTensor::from_addr(TrfAddress::Full) };
+# let _o = trf_sequencer_partial_read(a, &b);
 ```
 
 ### Constraints

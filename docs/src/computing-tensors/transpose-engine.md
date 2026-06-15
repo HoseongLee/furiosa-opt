@@ -27,6 +27,11 @@ fn basic_transpose<'l, const T: Tu>(
 ) -> TransposeTensor<'l, T, i8, m![1], m![1], m![P], m![C, E], m![D # 32]> {
     input.transpose()
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let c: CollectTensor<'_, _, i8, m![1], m![1], m![P], m![C, D], m![E # 32]> = CollectTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = basic_transpose(c);
 ```
 
 ## Architecture
@@ -122,6 +127,11 @@ fn small_transpose<'l, const T: Tu>(
 ) -> TransposeTensor<'l, T, i8, m![1], m![1], m![P], m![B], m![A # 32]> {
     input.transpose()
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let c: CollectTensor<'_, _, i8, m![1], m![1], m![P], m![A], m![B # 32]> = CollectTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = small_transpose(c);
 ```
 
 Parameters:
@@ -156,6 +166,11 @@ fn large_col_transpose<'l, const T: Tu>(
 ) -> TransposeTensor<'l, T, i8, m![1], m![1], m![P], m![B, D, E], m![C # 32]> {
     input.transpose()
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let c: CollectTensor<'_, _, i8, m![1], m![1], m![P], m![B, C, D], m![E # 32]> = CollectTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = large_col_transpose(c);
 ```
 
 Parameters:
@@ -190,6 +205,11 @@ fn bf16_transpose<'l, const T: Tu>(
 ) -> TransposeTensor<'l, T, bf16, m![1], m![1], m![P], m![C, E], m![D # 16]> {
     input.transpose()
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let c: CollectTensor<'_, _, bf16, m![1], m![1], m![P], m![C, D], m![E # 16]> = CollectTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = bf16_transpose(c);
 ```
 
 Parameters:
@@ -224,6 +244,11 @@ fn i4_transpose<'l, const T: Tu>(
 ) -> TransposeTensor<'l, T, i4, m![1], m![1], m![P], m![B, E], m![C # 64]> {
     input.transpose()
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let c: CollectTensor<'_, _, i4, m![1], m![1], m![P], m![B, C], m![E # 64]> = CollectTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = i4_transpose(c);
 ```
 
 Parameters:
@@ -259,6 +284,11 @@ fn f32_transpose<'l, const T: Tu>(
 ) -> TransposeTensor<'l, T, f32, m![1], m![1], m![P], m![B, E], m![D # 8]> {
     input.transpose()
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let c: CollectTensor<'_, _, f32, m![1], m![1], m![P], m![B, D], m![E # 8]> = CollectTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = f32_transpose(c);
 ```
 
 Parameters:
