@@ -35,7 +35,11 @@ const TRANSPOSE_VALID_IN_COLS_4BIT: &[usize] = &[16, 32];
 #[derive(Debug)]
 pub struct PositionTranspose;
 
-impl Position for PositionTranspose {}
+impl Position for PositionTranspose {
+    fn is_allowed_size(size: usize) -> bool {
+        size == TRANSPOSE_OUTPUT_BYTES
+    }
+}
 
 /// Tensor streamed after the transpose engine.
 pub type TransposeTensor<'l, const T: Tu, D, Chip, Cluster, Slice, Time, Packet, B = CurrentBackend> =

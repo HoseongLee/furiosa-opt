@@ -24,7 +24,11 @@ use crate::tensor::tu::{Position, TuTensor};
 #[derive(Debug)]
 pub struct PositionCollect;
 
-impl Position for PositionCollect {}
+impl Position for PositionCollect {
+    fn is_allowed_size(size: usize) -> bool {
+        size == FLIT_BYTES
+    }
+}
 
 /// Tensor after collect engine: packet is exactly 32 bytes (one flit).
 pub type CollectTensor<'l, const T: Tu, D, Chip, Cluster, Slice, Time, Packet, B = CurrentBackend> =

@@ -20,7 +20,11 @@ use crate::tensor::tu::{Position, TuTensor};
 #[derive(Debug)]
 pub struct PositionSwitch;
 
-impl Position for PositionSwitch {}
+impl Position for PositionSwitch {
+    fn is_allowed_size(size: usize) -> bool {
+        size % 8 == 0
+    }
+}
 
 /// Tensor streamed after the switch engine.
 pub type SwitchTensor<'l, const T: Tu, D, Chip, Cluster, Slice, Time, Packet, B = CurrentBackend> =

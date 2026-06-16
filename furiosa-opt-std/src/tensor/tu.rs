@@ -24,7 +24,12 @@ use crate::tensor::Tensor;
 /// Marker trait for pipeline position of Tensor Unit tensors.
 ///
 /// Position does not contain Vector Engine position: VectorTensor has its own typestate.
-pub trait Position: std::fmt::Debug + 'static {}
+pub trait Position: std::fmt::Debug + 'static {
+    /// Checks if size is allowed for each position
+    fn is_allowed_size(_size: usize) -> bool {
+        true
+    }
+}
 
 /// After beginning the pipeline.
 #[derive(Debug)]
@@ -59,6 +64,11 @@ impl<'l, const T: Tu, P: Position, D: Scalar, Chip: M, Cluster: M, Slice: M, Tim
 
     /// Creates a new Tensor Unit tensor.
     pub fn new(ctx: &'l mut TuContext<{ T }>, inner: Tensor<D, Self::Mapping, B>) -> Self {
+        assert_eq!(Cluster::SIZE, 2, "Cluster size must be 2, got {}", Cluster::SIZE);
+        assert_eq!(Slice::SIZE, 256, "Slice size must be 256, got {}", Slice::SIZE);
+
+        assert!(P::is_allowed_size(D::size_in_bytes_from_length(Packet::SIZE)), "Packet size constraint not satisfied");
+
         Self {
             ctx,
             inner,

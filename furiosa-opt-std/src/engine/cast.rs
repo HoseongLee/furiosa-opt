@@ -19,7 +19,11 @@ use crate::tensor::tu::{Position, TuTensor};
 #[derive(Debug)]
 pub struct PositionCast;
 
-impl Position for PositionCast {}
+impl Position for PositionCast {
+    fn is_allowed_size(size: usize) -> bool {
+        size == FLIT_BYTES
+    }
+}
 
 /// Tensor streamed after the cast engine.
 pub type CastTensor<'l, const T: Tu, D, Chip, Cluster, Slice, Time, Packet, B = CurrentBackend> =
