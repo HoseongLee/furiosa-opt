@@ -81,9 +81,9 @@ The example below exercises both operations: Packing absorbs the innermost size-
 axes![M = 32, N = 8, K = 16, L = 2, B = 5];
 
 fn stream_adapter_example<'l, const T: Tu>(
-    input: CollectTensor<'l, { T }, bf16, m![1], m![1], m![1], m![M, L], m![K]>,
-    trf: &TrfTensor<bf16, m![1], m![1], m![1], m![N], m![B, L, K]>,
-) -> ContractOuterTensor<'l, { T }, bf16, m![1], m![1], m![1], m![N], m![M, B], m![L, K]> {
+    input: CollectTensor<'l, { T }, bf16, m![1], m![1 # 2], m![1 # 256], m![M, L], m![K]>,
+    trf: &TrfTensor<bf16, m![1], m![1 # 2], m![1 # 256], m![N], m![B, L, K]>,
+) -> ContractOuterTensor<'l, { T }, bf16, m![1], m![1 # 2], m![1 # 256], m![N], m![M, B], m![L, K]> {
     // Packing (PackSize = 2):
     //   L = 2 (innermost Time) absorbed into Packet.
     //   PackTime = [M = 32], PackPacket = [L = 2, K = 16] = 32 bf16 = 64B.
@@ -95,8 +95,8 @@ fn stream_adapter_example<'l, const T: Tu>(
 # 
 # let mut ctx = Context::acquire();
 # 
-# let a: CollectTensor<'_, _, bf16, m![1], m![1], m![1], m![M, L], m![K]> = CollectTensor::new(&mut ctx.main, Tensor::uninit());
-# let b: TrfTensor<bf16, m![1], m![1], m![1], m![N], m![B, L, K]> = unsafe { TrfTensor::from_addr(TrfAddress::Full) };
+# let a: CollectTensor<'_, _, bf16, m![1], m![1 # 2], m![1 # 256], m![M, L], m![K]> = CollectTensor::new(&mut ctx.main, Tensor::uninit());
+# let b: TrfTensor<bf16, m![1], m![1 # 2], m![1 # 256], m![N], m![B, L, K]> = unsafe { TrfTensor::from_addr(TrfAddress::Full) };
 # let _o = stream_adapter_example(a, &b);
 ```
 
@@ -152,9 +152,9 @@ In this example, `ReadSize` covers all of `Element` in one 64 B read, so `Elemen
 axes![M = 32, N = 8, K = 32];
 
 fn trf_sequencer_full_read<'l, const T: Tu>(
-    input: CollectTensor<'l, T, bf16, m![1], m![1], m![1], m![M, K / 16], m![K % 16]>,
-    trf: &TrfTensor<bf16, m![1], m![1], m![1], m![N], m![K]>,
-) -> ContractOuterTensor<'l, T, bf16, m![1], m![1], m![1], m![N], m![M], m![K]> {
+    input: CollectTensor<'l, T, bf16, m![1], m![1 # 2], m![1 # 256], m![M, K / 16], m![K % 16]>,
+    trf: &TrfTensor<bf16, m![1], m![1 # 2], m![1 # 256], m![N], m![K]>,
+) -> ContractOuterTensor<'l, T, bf16, m![1], m![1 # 2], m![1 # 256], m![N], m![M], m![K]> {
     // Element         = K
     // ReadSize        = 32
     // PacketBroadcast = 1
@@ -165,8 +165,8 @@ fn trf_sequencer_full_read<'l, const T: Tu>(
 # 
 # let mut ctx = Context::acquire();
 # 
-# let a: CollectTensor<'_, _, bf16, m![1], m![1], m![1], m![M, K / 16], m![K % 16]> = CollectTensor::new(&mut ctx.main, Tensor::uninit());
-# let b: TrfTensor<bf16, m![1], m![1], m![1], m![N], m![K]> = unsafe { TrfTensor::from_addr(TrfAddress::Full) };
+# let a: CollectTensor<'_, _, bf16, m![1], m![1 # 2], m![1 # 256], m![M, K / 16], m![K % 16]> = CollectTensor::new(&mut ctx.main, Tensor::uninit());
+# let b: TrfTensor<bf16, m![1], m![1 # 2], m![1 # 256], m![N], m![K]> = unsafe { TrfTensor::from_addr(TrfAddress::Full) };
 # let _o = trf_sequencer_full_read(a, &b);
 ```
 
@@ -179,9 +179,9 @@ In this example, `ReadSize` covers only part of `Element`, so `Element / ReadSiz
 axes![M = 32, N = 8, K = 16, L = 2, O = 2];
 
 fn trf_sequencer_partial_read<'l, const T: Tu>(
-    input: CollectTensor<'l, T, bf16, m![1], m![1], m![1], m![O, M, L], m![K]>,
-    trf: &TrfTensor<bf16, m![1], m![1], m![1], m![N], m![O, K]>,
-) -> ContractOuterTensor<'l, T, bf16, m![1], m![1], m![1], m![N], m![O, M], m![L, K]> {
+    input: CollectTensor<'l, T, bf16, m![1], m![1 # 2], m![1 # 256], m![O, M, L], m![K]>,
+    trf: &TrfTensor<bf16, m![1], m![1 # 2], m![1 # 256], m![N], m![O, K]>,
+) -> ContractOuterTensor<'l, T, bf16, m![1], m![1 # 2], m![1 # 256], m![N], m![O, M], m![L, K]> {
     // Element         = [O, K]
     // ReadSize        = 16
     // PacketBroadcast = L
@@ -192,8 +192,8 @@ fn trf_sequencer_partial_read<'l, const T: Tu>(
 # 
 # let mut ctx = Context::acquire();
 # 
-# let a: CollectTensor<'_, _, bf16, m![1], m![1], m![1], m![O, M, L], m![K]> = CollectTensor::new(&mut ctx.main, Tensor::uninit());
-# let b: TrfTensor<bf16, m![1], m![1], m![1], m![N], m![O, K]> = unsafe { TrfTensor::from_addr(TrfAddress::Full) };
+# let a: CollectTensor<'_, _, bf16, m![1], m![1 # 2], m![1 # 256], m![O, M, L], m![K]> = CollectTensor::new(&mut ctx.main, Tensor::uninit());
+# let b: TrfTensor<bf16, m![1], m![1 # 2], m![1 # 256], m![N], m![O, K]> = unsafe { TrfTensor::from_addr(TrfAddress::Full) };
 # let _o = trf_sequencer_partial_read(a, &b);
 ```
 

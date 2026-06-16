@@ -43,8 +43,8 @@ axes![V = 32, M = 32, N = 8, K = 32];
 
 type Chip    = m![1];
 type Cluster = m![V / 16];
-type Slice   = m![V % 16];
-type Lane     = m![N];
+type Slice   = m![V % 16 # 256];
+type Lane    = m![N];
 
 /// Stores matmul weights into TRF for consumption by `bmatmul` in
 /// [Contraction Engine: Example: Batched MatMul](./contraction-engine/index.md#example-batched-matmul).

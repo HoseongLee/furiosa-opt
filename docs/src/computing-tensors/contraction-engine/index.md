@@ -96,7 +96,7 @@ axes![V = 32, M = 32, N = 8, K = 32];   // V batch, M×N output, K contraction
 type Chip    = m![1];                   // single chip
 type Cluster = m![M / 16];              // outer M split across clusters (M / 16 = 2)
 type Slice   = m![M % 16, V % 16];      // inner M × inner V = 16 × 16 = 256 slices per cluster
-type Lane     = m![N];                   // N (output channels) partitions the 8 hardware lanes
+type Lane    = m![N];                   // N (output channels) partitions the 8 hardware lanes
 
 /// Batched matmul with K placed in Time.
 fn bmatmul_k_in_time<'l, const T: Tu>(
@@ -110,7 +110,7 @@ fn bmatmul_k_in_time<'l, const T: Tu>(
          // Outer: Lane = m![N] (inferred from trf), OutTime = m![V / 16, K], OutPacket = m![1 # 32].
          // input: 1 K-element broadcast across all N lanes.
          // trf:   1 K-element per lane, advancing one K-step per cycle.
-         .contract_outer::<m![V / 16, K], m![1 # 32], _, _>(trf)
+         .contract_outer::<m![V / 16, K], m![1 # 16], _, _>(trf)
          // Packet Reducer: OutPacket = m![1]. Nothing to reduce.
          .contract_packet::<m![1]>()
          // Time Reducer: OutTime = m![V / 16]. K iterates over Time and accumulates; V outer survives.
@@ -141,8 +141,8 @@ axes![V = 32, M = 32, N = 8, K = 32];   // V batch, M×N output, K contraction
 
 type Chip    = m![1];                   // single chip
 type Cluster = m![V / 16];              // outer V split across clusters (V / 16 = 2)
-type Slice   = m![V % 16];              // inner V split across slices (V % 16 = 16 per cluster)
-type Lane     = m![N];                   // N (output channels) partitions the 8 hardware lanes (N = 8 fills the cap)
+type Slice   = m![V % 16 # 256];        // inner V split across slices (V % 16 = 16 per cluster)
+type Lane    = m![N];                   // N (output channels) partitions the 8 hardware lanes (N = 8 fills the cap)
 
 /// Batched matmul: V slices × (M × K) · (K × N) → V × M × N.
 fn bmatmul_m_in_time<'l, const T: Tu>(
@@ -187,8 +187,8 @@ axes![V = 32, M = 32, N = 8, K = 32];   // V batch, M×N output, K contraction
 
 type Chip    = m![1];                   // single chip
 type Cluster = m![M / 16];              // outer M split across clusters (M / 16 = 2)
-type Slice   = m![M % 16];              // inner M split across slices (M % 16 = 16 per cluster)
-type Lane     = m![N];                   // N (output channels) partitions the 8 hardware lanes
+type Slice   = m![M % 16 # 256];        // inner M split across slices (M % 16 = 16 per cluster)
+type Lane    = m![N];                   // N (output channels) partitions the 8 hardware lanes
 
 /// Batched matmul with V (batch) placed in Time.
 fn bmatmul_v_in_time<'l, const T: Tu>(

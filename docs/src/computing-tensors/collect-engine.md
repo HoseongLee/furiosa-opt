@@ -29,8 +29,8 @@ The `FetchTensor` entry point bypasses the Switch Engine when no slice distribut
 axes![A = 8, B = 32];
 
 fn collect_identity<'l, const T: Tu>(
-    input: SwitchTensor<'l, T, i8, m![1], m![1], m![1], m![A], m![B]>,
-) -> CollectTensor<'l, T, i8, m![1], m![1], m![1], m![A], m![B # 32]> {
+    input: SwitchTensor<'l, T, i8, m![1], m![1 # 2], m![1 # 256], m![A], m![B]>,
+) -> CollectTensor<'l, T, i8, m![1], m![1 # 2], m![1 # 256], m![A], m![B # 32]> {
     // B=32 elements × 1 byte (i8) = 32 bytes = one flit.
     // Time and Packet pass through unchanged.
     input.collect()
@@ -38,7 +38,7 @@ fn collect_identity<'l, const T: Tu>(
 # 
 # let mut ctx = Context::acquire();
 # 
-# let c: SwitchTensor<'_, _, i8, m![1], m![1], m![1], m![A], m![B]> = SwitchTensor::new(&mut ctx.main, Tensor::uninit());
+# let c: SwitchTensor<'_, _, i8, m![1], m![1 # 2], m![1 # 256], m![A], m![B]> = SwitchTensor::new(&mut ctx.main, Tensor::uninit());
 # let _o = collect_identity(c);
 ```
 
@@ -67,8 +67,8 @@ After:    Time = m![A]
 axes![A = 8, B = 16];
 
 fn collect_padding<'l, const T: Tu>(
-    input: SwitchTensor<'l, T, i8, m![1], m![1], m![1], m![A], m![B]>,
-) -> CollectTensor<'l, T, i8, m![1], m![1], m![1], m![A], m![B # 32]> {
+    input: SwitchTensor<'l, T, i8, m![1], m![1 # 2], m![1 # 256], m![A], m![B]>,
+) -> CollectTensor<'l, T, i8, m![1], m![1 # 2], m![1 # 256], m![A], m![B # 32]> {
     // B=16 elements × 1 byte = 16 bytes < 32 bytes.
     // Padded to 32 bytes: Packet2 = m![B # 32].
     // Time unchanged since it fits in one flit.
@@ -77,7 +77,7 @@ fn collect_padding<'l, const T: Tu>(
 # 
 # let mut ctx = Context::acquire();
 # 
-# let c: SwitchTensor<'_, _, i8, m![1], m![1], m![1], m![A], m![B]> = SwitchTensor::new(&mut ctx.main, Tensor::uninit());
+# let c: SwitchTensor<'_, _, i8, m![1], m![1 # 2], m![1 # 256], m![A], m![B]> = SwitchTensor::new(&mut ctx.main, Tensor::uninit());
 # let _o = collect_padding(c);
 ```
 
@@ -106,8 +106,8 @@ After:    Time = m![A]
 axes![A = 8, B = 32];
 
 fn collect_multi_flit<'l, const T: Tu>(
-    input: SwitchTensor<'l, T, bf16, m![1], m![1], m![1], m![A], m![B]>,
-) -> CollectTensor<'l, T, bf16, m![1], m![1], m![1], m![A, B / 16], m![B % 16]> {
+    input: SwitchTensor<'l, T, bf16, m![1], m![1 # 2], m![1 # 256], m![A], m![B]>,
+) -> CollectTensor<'l, T, bf16, m![1], m![1 # 2], m![1 # 256], m![A, B / 16], m![B % 16]> {
     // B=32 elements × 2 bytes (bf16) = 64 bytes = 2 flits.
     // Inner 16 elements = 32 bytes → Packet2 = m![B % 16].
     // Outer 2 flits → absorbed into Time2 = m![A, B / 16].
@@ -116,7 +116,7 @@ fn collect_multi_flit<'l, const T: Tu>(
 # 
 # let mut ctx = Context::acquire();
 # 
-# let c: SwitchTensor<'_, _, bf16, m![1], m![1], m![1], m![A], m![B]> = SwitchTensor::new(&mut ctx.main, Tensor::uninit());
+# let c: SwitchTensor<'_, _, bf16, m![1], m![1 # 2], m![1 # 256], m![A], m![B]> = SwitchTensor::new(&mut ctx.main, Tensor::uninit());
 # let _o = collect_multi_flit(c);
 ```
 
@@ -146,8 +146,8 @@ After:    Time = m![A, B / 16]
 axes![A = 8, B = 51];
 
 fn collect_multi_flit_padded<'l, const T: Tu>(
-    input: SwitchTensor<'l, T, i8, m![1], m![1], m![1], m![A], m![B]>,
-) -> CollectTensor<'l, T, i8, m![1], m![1], m![1], m![A, B # 64 / 32], m![B # 64 % 32]> {
+    input: SwitchTensor<'l, T, i8, m![1], m![1 # 2], m![1 # 256], m![A], m![B]>,
+) -> CollectTensor<'l, T, i8, m![1], m![1 # 2], m![1 # 256], m![A, B # 64 / 32], m![B # 64 % 32]> {
     // B is not 32-byte aligned; first pad B to a multiple of 32 bytes.
     // B # 64=64 elements × 1 byte (i8) = 64 bytes = 2 flits.
     // Inner 32 elements = 32 bytes → Packet2 = m![B # 64 % 32].
@@ -157,7 +157,7 @@ fn collect_multi_flit_padded<'l, const T: Tu>(
 # 
 # let mut ctx = Context::acquire();
 # 
-# let c: SwitchTensor<'_, _, i8, m![1], m![1], m![1], m![A], m![B]> = SwitchTensor::new(&mut ctx.main, Tensor::uninit());
+# let c: SwitchTensor<'_, _, i8, m![1], m![1 # 2], m![1 # 256], m![A], m![B]> = SwitchTensor::new(&mut ctx.main, Tensor::uninit());
 # let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| { collect_multi_flit_padded(c) }));
 ```
 
@@ -207,7 +207,7 @@ The compiler bounds the resulting tensor's total byte size by the chosen region'
 # #![feature(adt_const_params)]
 # extern crate furiosa_opt_std;
 # use furiosa_opt_std::prelude::*;
-axes![B = 64];
+axes![B = 32];
 
 fn load_trf<'l, const T: Tu>(
     input: CollectTensor<'l, T, i8, m![1], m![1 # 2], m![1 # 256], m![1], m![B]>,

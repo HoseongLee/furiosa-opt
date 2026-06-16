@@ -73,8 +73,7 @@ fn verify_cast<D: Scalar, OutD: Scalar, InPacket: M, OutPacket: M>() {
     assert_eq!(
         OutD::size_in_bytes_from_length(OutPacket::SIZE),
         FLIT_BYTES,
-        "Cast output packet must be exactly {FLIT_BYTES} bytes (one flit). \
-         Expected: {expected_packet}, got: {out_packet}",
+        "Cast output packet must be exactly {FLIT_BYTES} bytes (one flit)."
     );
     assert_eq!(
         expected_packet, out_packet,

@@ -34,18 +34,18 @@ axes![N = 8, M = 4, P = 16];
 /// Lane folds into OutPacket.
 fn lane_interleaved<'l, const T: Tu>(
     // Input from upstream Time Reducer: Lane = m![N], Time = m![M], Packet = m![P].
-    input: ContractTimeTensor<'l, T, f32, m![1], m![1], m![1], m![N], m![M], m![P]>,
+    input: ContractTimeTensor<'l, T, f32, m![1], m![1 # 2], m![1 # 256], m![N], m![M], m![P]>,
     // Output: OutTime = m![M, P] = [Time, Packet], OutPacket = m![N] = [Lane].
-) -> ContractTensor<'l, T, f32, m![1], m![1], m![1], m![M, P], m![N]> {
+) -> ContractTensor<'l, T, f32, m![1], m![1 # 2], m![1 # 256], m![M, P], m![N]> {
     input.contract_lane::<m![M, P], m![N]>(LaneMode::Interleaved)
 }
 # 
 # let mut ctx = Context::acquire();
 # 
-# let a: CollectTensor<'_, _, bf16, m![1], m![1], m![1], m![M], m![P]> = CollectTensor::new(&mut ctx.main, Tensor::uninit());
-# let b: TrfTensor<bf16, m![1], m![1], m![1], m![N], m![P]> = unsafe { TrfTensor::from_addr(TrfAddress::Full) };
+# let a: CollectTensor<'_, _, bf16, m![1], m![1 # 2], m![1 # 256], m![M], m![P]> = CollectTensor::new(&mut ctx.main, Tensor::uninit());
+# let b: TrfTensor<bf16, m![1], m![1 # 2], m![1 # 256], m![N], m![P]> = unsafe { TrfTensor::from_addr(TrfAddress::Full) };
 # 
-# let i: ContractTimeTensor<'_, _, f32, m![1], m![1], m![1], m![N], m![M], m![P]> = a 
+# let i: ContractTimeTensor<'_, _, f32, m![1], m![1 # 2], m![1 # 256], m![N], m![M], m![P]> = a 
 #     .contract_outer::<m![M], m![P], m![N], m![P]>(&b)
 #     .contract_packet::<m![P]>()
 #     .contract_time::<m![M]>();
@@ -75,18 +75,18 @@ axes![N = 8, M = 4, P = 16];
 /// Lane folds into OutTime.
 fn lane_sequential<'l, const T: Tu>(
     // Input from upstream Time Reducer: Lane = m![N], Time = m![M], Packet = m![P].
-    input: ContractTimeTensor<'l, T, f32, m![1], m![1], m![1], m![N], m![M], m![P]>,
+    input: ContractTimeTensor<'l, T, f32, m![1], m![1 # 2], m![1 # 256], m![N], m![M], m![P]>,
     // Output: OutTime = m![M, N, P / 8] = [Time, Lane, Packet / 8], OutPacket = m![P % 8] = [Packet % 8].
-) -> ContractTensor<'l, T, f32, m![1], m![1], m![1], m![M, N, P / 8], m![P % 8]> {
+) -> ContractTensor<'l, T, f32, m![1], m![1 # 2], m![1 # 256], m![M, N, P / 8], m![P % 8]> {
     input.contract_lane::<m![M, N, P / 8], m![P % 8]>(LaneMode::Sequential)
 }
 # 
 # let mut ctx = Context::acquire();
 # 
-# let a: CollectTensor<'_, _, bf16, m![1], m![1], m![1], m![M], m![P]> = CollectTensor::new(&mut ctx.main, Tensor::uninit());
-# let b: TrfTensor<bf16, m![1], m![1], m![1], m![N], m![P]> = unsafe { TrfTensor::from_addr(TrfAddress::Full) };
+# let a: CollectTensor<'_, _, bf16, m![1], m![1 # 2], m![1 # 256], m![M], m![P]> = CollectTensor::new(&mut ctx.main, Tensor::uninit());
+# let b: TrfTensor<bf16, m![1], m![1 # 2], m![1 # 256], m![N], m![P]> = unsafe { TrfTensor::from_addr(TrfAddress::Full) };
 # 
-# let i: ContractTimeTensor<'_, _, f32, m![1], m![1], m![1], m![N], m![M], m![P]> = a 
+# let i: ContractTimeTensor<'_, _, f32, m![1], m![1 # 2], m![1 # 256], m![N], m![M], m![P]> = a 
 #     .contract_outer::<m![M], m![P], m![N], m![P]>(&b)
 #     .contract_packet::<m![P]>()
 #     .contract_time::<m![M]>();
