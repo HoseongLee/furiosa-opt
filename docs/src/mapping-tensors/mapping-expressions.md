@@ -61,13 +61,13 @@ The mapping `m![A]` maps 8 buffer indices linearly to tensor indices along the a
 
 ```rust
 # extern crate furiosa_opt_std;
+# extern crate furiosa_mapping;
 # use furiosa_opt_std::prelude::*;
 #
 # axes![A = 8];
 #
 type E = m![A]; // Symbol<Ident::A, 8>
 
-#[test]
 fn test_symbol() {
     assert_eq!(E::map(0), Some(i![A: 0]));
     assert_eq!(E::map(1), Some(i![A: 1]));
@@ -77,6 +77,8 @@ fn test_symbol() {
     }
     assert_eq!(E::map(E::SIZE), None);
 }
+#
+# test_symbol();
 ```
 
 ```rust,ignore
@@ -95,13 +97,13 @@ The size is `L::SIZE * R::SIZE`, and the mapping uses floor division and modulo 
 
 ```rust
 # extern crate furiosa_opt_std;
+# extern crate furiosa_mapping;
 # use furiosa_opt_std::prelude::*;
 #
 # axes![A = 8, B = 512];
 #
 type E = m![A, B]; // Pair<m![A], m![B]>
 
-#[test]
 fn test_pair() {
     // First 512 elements hold A=0, next 512 hold A=1
     assert_eq!(E::map(0),   Some(i![A: 0, B: 0]));
@@ -113,6 +115,8 @@ fn test_pair() {
     }
     assert_eq!(E::map(E::SIZE), None);
 }
+#
+# test_pair();
 ```
 
 ```rust,ignore
@@ -126,15 +130,17 @@ It serves as the identity element for `Pair`: `m![1, A]` and `m![A, 1]` are both
 
 ```rust
 # extern crate furiosa_opt_std;
+# extern crate furiosa_mapping;
 # use furiosa_opt_std::prelude::*;
 #
 type E = m![1]; // Identity
 
-#[test]
 fn test_identity() {
     assert_eq!(E::map(0), Some(i![]));
     assert_eq!(E::map(1), None);
 }
+#
+# test_identity();
 ```
 
 ```rust,ignore
@@ -150,13 +156,13 @@ With `axes![C = 13, D = 61]`, `m![C, D]` creates misaligned rows since `61` is n
 
 ```rust
 # extern crate furiosa_opt_std;
+# extern crate furiosa_mapping;
 # use furiosa_opt_std::prelude::*;
 #
 axes![C = 13, D = 61];
 
 type E = m![C, D # 64]; // Pair<m![C], Padding<m![D], 64>>
 
-#[test]
 fn test_padding() {
     assert_eq!(E::map(0),  Some(i![C: 0, D: 0]));
     assert_eq!(E::map(60), Some(i![C: 0, D: 60]));
@@ -165,6 +171,8 @@ fn test_padding() {
     assert_eq!(E::map(63), None); // padding
     assert_eq!(E::map(64), Some(i![C: 1, D: 0]));
 }
+#
+# test_padding();
 ```
 
 ```rust,ignore
@@ -179,12 +187,12 @@ The mapping `m![D = 2]` takes only the first 2 elements of axis `D`, producing i
 
 ```rust
 # extern crate furiosa_opt_std;
+# extern crate furiosa_mapping;
 # use furiosa_opt_std::prelude::*;
 #
 axes![C = 2, D = 3];
 type E = m![C, D = 2]; // Pair<m![C], Resize<m![D], 2>>
 
-#[test]
 fn test_resize() {
     assert_eq!(E::map(0), Some(i![C: 0, D: 0]));
     assert_eq!(E::map(1), Some(i![C: 0, D: 1]));
@@ -192,6 +200,8 @@ fn test_resize() {
     assert_eq!(E::map(3), Some(i![C: 1, D: 1]));
     assert_eq!(E::map(4), None);
 }
+#
+# test_resize();
 ```
 
 ```rust,ignore
@@ -209,20 +219,18 @@ The `.tile()` method extracts a tile by resizing one dimension to the tile size 
 #
 # axes![A = 8, B = 512];
 #
-# fn tiles() {
 let tensor = unsafe { HbmTensor::<bf16, m![1], m![A, B]>::from_addr(0) };
 let view = tensor.view(); // HbmTensorView::<'_, bf16, m![1], m![A, B]>
-let tile01 = view.tile::<m![B], 2, m![A, B = 2 # 4]>(0); // HbmTensorView::<'_, bf16, m![1], m![A, B = 2 # 4]>
-let tile23 = view.tile::<m![B], 2, m![A, B = 2 # 4]>(2); // HbmTensorView::<'_, bf16, m![1], m![A, B = 2 # 4]>
-# }
+let tile01 = view.tile::<m![B], 2, m![A, B = 2 # 512]>(0); // HbmTensorView::<'_, bf16, m![1], m![A, B = 2 # 512]>
+let tile23 = view.tile::<m![B], 2, m![A, B = 2 # 512]>(2); // HbmTensorView::<'_, bf16, m![1], m![A, B = 2 # 512]>
 ```
 
 The `.tile()` method takes three type parameters and one value parameter.
 - The *tile dimension* `m![B]` specifies which dimension to divide along.
 - The *tile size* `2` specifies the number of elements per tile.
-- The *tile mapping* `m![A, B = 2 # 4]` defines the resulting view's mapping.
-  The mapping `B = 2 # 4` signifies that dimension `B` has a logical size of `2` within the view but exists within a physical footprint of `4`.
-  Without `# 4`, the stride between tiles would be 2 instead of 4, causing the view to read from wrong buffer positions.
+- The *tile mapping* `m![A, B = 2 # 512]` defines the resulting view's mapping.
+  The mapping `B = 2 # 512` signifies that dimension `B` has a logical size of `2` within the view but exists within a physical footprint of `512`.
+  Without `# 512`, the stride between tiles would be 2 instead of 512, causing the view to read from wrong buffer positions.
 - The *starting index* specifies which tile to extract.
   Passing `0` captures the range `0..2` for `tile01`, while passing `2` captures the range `2..4` for `tile23`.
 
@@ -234,6 +242,7 @@ The mapping `m![B / 64, B % 64]` creates an 8 × 64 grid where the first dimensi
 
 ```rust
 # extern crate furiosa_opt_std;
+# extern crate furiosa_mapping;
 # use furiosa_opt_std::prelude::*;
 # axes![A = 8, B = 512];
 type D1 = m![B / 64]; // stride with size 8
@@ -241,7 +250,6 @@ type D2 = m![B % 64]; // modulo with size 64
 
 type E = m![B / 64, B % 64]; // equivalent to `m![B]`
 
-#[test]
 fn test_stride_modulo() {
     assert_eq!(E::map(130), Some(i![B / 64: 2, B % 64: 2])); // block 2, position 2: B = 64*2 + 2 = 130
     assert_eq!(E::map(130), <m![B]>::map(130));               // same result as flat m![B]
@@ -266,6 +274,8 @@ fn test_stride_modulo() {
     }
     assert_eq!(E::map(512), None);
 }
+#
+# test_stride_modulo();
 ```
 
 ```rust,ignore
@@ -294,13 +304,13 @@ The following example splits `B` into three dimensions where the buffer's bit la
 
 ```rust
 # extern crate furiosa_opt_std;
+# extern crate furiosa_mapping;
 # use furiosa_opt_std::prelude::*;
 # axes![A = 8, B = 512];
 // B's bits: 6 - 8,  0 - 4,          5
 // Values:   0 - 7, 0 - 31,      0 - 1
 type E = m![B / 64, B % 32, B / 32 % 2];
 
-#[test]
 fn test_nested_stride() {
     assert_eq!(E::map(67), Some(i![B: 97])); // 67 = 64*1 + 2*1 + 1 (i=1,j=1,k=1) → B = 64*1 + 1 + 32*1 = 97
     // Verify B=97 round-trips: 97/64=1, 97%32=1, (97/32)%2=1
@@ -322,6 +332,8 @@ fn test_nested_stride() {
     }
     assert_eq!(E::map(512), None);
 }
+#
+# test_nested_stride();
 ```
 
 This kind of bit rearrangement maps naturally to hardware memory layouts where address bits are reordered for bank interleaving or cache efficiency.
@@ -362,12 +374,13 @@ type L = m![A];
 type R = m![B];
 type E = m![{ L }, { R }]; // equivalent to `m![A, B]`
 
-#[test]
 fn test_escape() {
     for i in 0..E::SIZE {
         assert_eq!(E::map(i), <m![A, B]>::map(i));
     }
 }
+#
+# test_escape();
 ```
 
 This escape syntax breaks down complex mappings into named, reusable components.

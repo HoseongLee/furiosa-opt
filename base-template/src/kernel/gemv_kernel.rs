@@ -20,7 +20,6 @@ pub fn gemv_kernel(
     let vector: DmTensor<bf16, Chip, Cluster, Slice, m![J]> = vector.to_dm(&mut ctx.tdma, 1 << 12);
 
     // Load vector into TRF
-    // The Switch Engine automatically broadcasts the vector to all `I` slices
     let vector_trf: TrfTensor<bf16, Chip, Cluster, Slice, Lane, m![J]> = ctx
         .sub
         .begin(vector.view())

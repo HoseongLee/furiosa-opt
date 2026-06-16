@@ -106,12 +106,48 @@ fn broadcasting_read<'l>(
 }
 
 /// Broadcasting write: write broadcast stream back to buffer.
+/// This is rejected as each `Buf` slot must have exactly one source position in `(Time, Packet)`
+/// This code will panic when run
 fn broadcasting_write(
     buf: &mut BufTensor<i8, m![A]>,
     stream: StreamTensor<i8, m![T, A], m![P]>,
 ) {
     buf.write(stream)
 }
+# 
+# let buf_read = BufTensor::<bf16, m![A, B]>::from_buf(vec![bf16::from_f32(1f32); 8 * 512]);
+# let mut buf_write = BufTensor::<bf16, m![A, B]>::from_buf(vec![bf16::from_f32(1f32); 8 * 512]);
+# 
+# let stream = strided_read(&buf_read);
+# strided_write(&mut buf_write, stream);
+# 
+# // -----------------------------------------------------------------------------------
+# 
+# let buf_read = BufTensor::<bf16, m![N, C, H, W]>::from_buf(vec![bf16::from_f32(1f32); 4 * 3 * 8 * 8]);
+# let mut buf_write = BufTensor::<bf16, m![N, C, H, W]>::from_buf(vec![bf16::from_f32(0f32); 4 * 3 * 8 * 8]);
+# 
+# let stream = axis_reordering_read(&buf_read);
+# axis_reordering_write(&mut buf_write, stream);
+# 
+# // -----------------------------------------------------------------------------------
+# 
+# let buf_read = BufTensor::<i8, m![A, B, C # 8]>::from_buf(vec![1i8; 8 * 512 * 8]);
+# let mut buf_write = BufTensor::<i8, m![A, B, C # 8]>::from_buf(vec![0i8; 8 * 512 * 8]);
+# 
+# let stream = tiling_read(&buf_read);
+# tiling_write(&mut buf_write, stream);
+# 
+# // -----------------------------------------------------------------------------------
+# 
+# let buf_read = BufTensor::<i8, m![A]>::from_buf(vec![1i8; 8 ]);
+# let mut buf_write = BufTensor::<i8, m![A]>::from_buf(vec![0i8; 8 ]);
+#
+# let stream = broadcasting_read(&buf_read);
+# let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+#     broadcasting_write(&mut buf_write, stream);
+# }));
+# assert!(result.is_err()); 
+# 
 ```
 
 ## Architecture
@@ -170,6 +206,19 @@ impl Config {
         gcd(self.packet_size, self.contiguous_run())
     }
 }
+# 
+# let config = Config {
+#     entries: vec![
+#         Entry { size: 4, stride: 192 },
+#         Entry { size: 3, stride: 64 },
+#         Entry { size: 8, stride: 8 },
+#         Entry { size: 8, stride: 1 },
+#     ],
+#     packet_size: 8,
+# };
+# 
+# assert_eq!(config.contiguous_run(), 768);
+# assert_eq!(config.access_size(), 8);
 ```
 
 In most cases the packet layout is fully contiguous in DM and `access_size == Packet::SIZE`.
@@ -180,7 +229,7 @@ See [Non-Contiguous Packets](#non-contiguous-packets) for a case where `access_s
 The `Config` for `m![N, C, H, W]` → `m![W, H, C, N]` has one entry per axis in the stream, each with a stride equal to that axis's span in the source buffer.
 Since `Packet = m![1]`, `Packet::SIZE = access_size = 1` and the sequencer issues one DM access per loop iteration.
 
-```rust
+```rust,ignore
 # extern crate furiosa_opt_std;
 # use furiosa_opt_std::prelude::*;
 # use furiosa_opt_std::pseudo::{BufTensor, StreamTensor};
@@ -263,6 +312,9 @@ fn read_rearranging<'l>(
 ) -> StreamTensor<'l, i8, m![B, A], m![C # 16]> {  // Time, Packet
     buf.read()
 }
+#
+# let buf_read = BufTensor::<i8, m![A, B, C # 32]>::from_buf(vec![1i8; 8 * 8 * 32]);
+# let _stream = read_rearranging(&buf_read);
 ```
 
 The compiler generates configuration entries by processing the combined mapping `m![B, A, C # 16]` term by term, transforming `Buf` along the way.
@@ -294,6 +346,9 @@ fn read_splitting<'l>(
 ) -> StreamTensor<'l, i8, m![A % 2, B % 4, A / 2, B / 4], m![C # 32]> {  // Time, Packet
     buf.read()
 }
+#
+# let buf_read = BufTensor::<i8, m![A, B, C # 8]>::from_buf(vec![1i8; 8 * 8 * 8]);
+# let _stream = read_splitting(&buf_read);
 ```
 
 Expressions like `A % 2` and `A / 2` split axis `A` into separate entries.
@@ -325,6 +380,9 @@ fn read_slicing<'l>(
 ) -> StreamTensor<'l, i8, m![A / 4, A % 4 = 3, B / 4, B % 4 = 2], m![C]> {  // Time, Packet
     buf.read()
 }
+#
+# let buf_read = BufTensor::<i8, m![A, B, C]>::from_buf(vec![1i8; 16 * 8 * 8]);
+# let _stream = read_slicing(&buf_read);
 ```
 
 The `= 3` notation limits `A % 4` to only 3 iterations instead of 4, restricting the hardware to a sub-region of the tensor.
@@ -357,6 +415,9 @@ fn read_broadcasting<'l>(
 ) -> StreamTensor<'l, i8, m![T, A], m![P]> {  // Time, Packet
     buf.read()
 }
+#
+# let buf_read = BufTensor::<i8, m![A]>::from_buf(vec![1i8; 16]);
+# let _stream = read_broadcasting(&buf_read);
 ```
 
 The compiler processes `m![T, A, P]` term by term:
@@ -391,6 +452,9 @@ fn read_merging<'l>(
 ) -> StreamTensor<'l, i8, m![W / 16, H % 2, H / 2, C / 2, C % 2, N / 2, N % 2, W / 8 % 2], m![W % 8]> {  // Time, Packet
     buf.read()
 }
+#
+# let buf_read = BufTensor::<i8, m![N, C, H, W]>::from_buf(vec![1i8; 8 * 8 * 8 * 32]);
+# let _stream = read_merging(&buf_read);
 ```
 
 The compiler processes `m![W / 16, H % 2, H / 2, C / 2, C % 2, N / 2, N % 2, W / 8 % 2, W % 8]` term by term, producing 9 initial entries:
@@ -446,6 +510,11 @@ fn write_padded(
     // ] : 32
     buf.write(stream)
 }
+#
+# let buf_read = BufTensor::<i8, m![A, B]>::from_buf(vec![1i8; 4 * 8]);
+# let mut buf_write = BufTensor::<i8, m![A, B # 16]>::from_buf(vec![0i8; 4 * 16]);
+# let stream = buf_read.read();
+# write_padded(&mut buf_write, stream);
 ```
 
 `Packet::SIZE = 32`, `contiguous_run = 8`, `access_size = 8`.
@@ -474,6 +543,9 @@ fn read_contiguous<'l>(
 ) -> StreamTensor<'l, i8, m![N, C, H], m![W]> {
     buf.read()
 }
+#
+# let buf_read = BufTensor::<i8, m![N, C, H, W]>::from_buf(vec![1i8; 4 * 3 * 4 * 8]);
+# let _stream = read_contiguous(&buf_read);
 
 // Compiler-generated configuration: [
 //   C -> 3 : 32,   (time dimension)
@@ -488,6 +560,9 @@ fn read_non_contiguous<'l>(
 ) -> StreamTensor<'l, i8, m![C], m![N, H, W]> {
     buf.read()
 }
+#
+# let buf_read = BufTensor::<i8, m![N, C, H, W]>::from_buf(vec![1i8; 4 * 3 * 4 * 8]);
+# let _stream = read_non_contiguous(&buf_read);
 ```
 
 ## Constraints
@@ -521,6 +596,10 @@ fn read_incompatible<'l>(
 ) -> StreamTensor<'l, i8, m![1], m![A % 3, A / 3]> {  // Time, Packet
     buf.read() // Compilation error: incompatible decomposition
 }
+#
+# let buf_read = BufTensor::<i8, m![A % 5, A / 5]>::from_buf(vec![1i8; 15]);
+# let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| { read_incompatible(&buf_read) }));
+# assert!(result.is_err());
 ```
 
 `Buf` decomposes `A` as `5 × 3` while the stream decomposes it as `3 × 5`.
