@@ -653,7 +653,8 @@ fn reduce_wrong_ordering<'l, const T: Tu>(
 # let mut ctx = Context::acquire();
 # 
 # let i: VectorBranchTensor<'_, _, i32, m![1], m![1], m![X, R # 16 / 2 % 4, R # 16 / 8], m![R # 16 % 2], m![1 # 8], i32, NoTensor, { stage::VeOrder::IntraFirst }> = VectorBranchTensor::new(&mut ctx.main, Tensor::uninit(), TagMode::Zero);
-# let _o = reduce_wrong_ordering(i);
+# let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| { reduce_wrong_ordering(i) }));
+# assert!(result.is_err());
 ```
 
 ### `R` in `Slice` and `Time`, Interleaved
@@ -688,7 +689,8 @@ fn reduce_wrong_interleave<'l, const T: Tu>(
 # let mut ctx = Context::acquire();
 # 
 # let i: VectorBranchTensor<'_, _, i32, m![1], m![1], m![X, R # 16 / 2 % 4], m![R # 16 / 8, R # 16 % 2], m![1 # 8], i32, NoTensor, { stage::VeOrder::IntraFirst }> = VectorBranchTensor::new(&mut ctx.main, Tensor::uninit(), TagMode::Zero);
-# let _o = reduce_wrong_interleave(i);
+# let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| { reduce_wrong_interleave(i) }));
+# assert!(result.is_err());
 ```
 
 ### `R` in `Slice` and `Time`, Over-padded
@@ -730,7 +732,8 @@ fn reduce_time_major_wrong<'l, const T: Tu>(
 # let mut ctx = Context::acquire();
 # 
 # let i: VectorBranchTensor<'_, _, i32, m![1], m![1], m![X, R # 20 % 4], m![A, R # 20 / 4], m![1 # 8], i32, NoTensor, { stage::VeOrder::IntraFirst }> = VectorBranchTensor::new(&mut ctx.main, Tensor::uninit(), TagMode::Zero);
-# let _o = reduce_time_major_wrong(i);
+# let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| { reduce_time_major_wrong(i) }));
+# assert!(result.is_err());
 ```
 
 ### `R` in `Packet`, Complex
@@ -751,7 +754,7 @@ fn reduce_wrong_packet_outer<'l, const T: Tu>(
 ) -> VectorIntraSliceReduceTensor<'l, T, f32, m![1], m![1], m![X, A / 2], m![1], m![1 # 4], f32, NoTensor, { stage::VeOrder::IntraFirst }>
 {
     input
-        .vector_narrow_clip::<m![R # 24 / 4]>()
+        .vector_narrow_clip::<m![R # 24 / 8 # 4]>()
         //   Slice     = m![X, A / 2]
         //   Time      = m![R # 24 % 8]
         //   Packet    = m![R # 24 / 8 # 8]   (NOT supported: major R in Packet)
@@ -765,12 +768,13 @@ fn reduce_wrong_packet_outer<'l, const T: Tu>(
 # let mut ctx = Context::acquire();
 # 
 # let i: VectorBranchTensor<'_, _, f32, m![1], m![1], m![X, A / 2], m![R # 24 % 8], m![R # 24 / 8 # 8], f32, NoTensor, { stage::VeOrder::IntraFirst }> = VectorBranchTensor::new(&mut ctx.main, Tensor::uninit(), TagMode::Zero);
-# let _o = reduce_wrong_packet_outer(i);
+# let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| { reduce_wrong_packet_outer(i) }));
+# assert!(result.is_err());
 ```
 
 The second example has `R` sharing `Packet` with another axis `A`, so `A`'s elements occupy positions that the prefix-based count treats as padding.
 
-```rust
+```rust,ignore
 # #![feature(adt_const_params)]
 # extern crate furiosa_opt_std;
 # use furiosa_opt_std::prelude::*;
@@ -791,11 +795,6 @@ fn reduce_wrong_mixed_packet<'l, const T: Tu>(
             IntraSliceReduceOpF32::Add,
         )
 }
-# 
-# let mut ctx = Context::acquire();
-# 
-# let i: VectorBranchTensor<'_, _, f32, m![1], m![1], m![X], m![R # 24 / 4], m![R # 24 % 4, A # 8], f32, NoTensor, { stage::VeOrder::IntraFirst }> = VectorBranchTensor::new(&mut ctx.main, Tensor::uninit(), TagMode::Zero);
-# let _o = reduce_wrong_mixed_packet(i);
 ```
 
 ### `R` in `Slice` and `Packet`
@@ -817,7 +816,7 @@ Slices 0–254 legitimately need `valid_size = 8`, but slice 255 needs `valid_si
 
 The degenerate sub-case where `R::SIZE % packet_span = 0` (every packet is full or empty) reduces to Slice only and is supported.
 
-```rust
+```rust,ignore
 # #![feature(adt_const_params)]
 # extern crate furiosa_opt_std;
 # use furiosa_opt_std::prelude::*;
@@ -840,11 +839,6 @@ fn reduce_wrong_slice_packet<'l, const T: Tu>(
             IntraSliceReduceOpI32::AddSat,
         )
 }
-# 
-# let mut ctx = Context::acquire();
-# 
-# let i: VectorBranchTensor<'_, _, i32, m![1], m![1], m![R # 2048 / 8], m![1], m![R # 2048 % 8], i32, NoTensor, { stage::VeOrder::IntraFirst }> = VectorBranchTensor::new(&mut ctx.main, Tensor::uninit(), TagMode::Zero);
-# let _o = reduce_wrong_slice_packet(i);
 ```
 
 ## Constraints

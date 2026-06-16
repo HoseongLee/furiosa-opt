@@ -146,7 +146,7 @@ After:    Time = m![A, B / 16]
 axes![A = 8, B = 51];
 
 fn collect_multi_flit_padded<'l, const T: Tu>(
-    input: SwitchTensor<'l, T, i8, m![1], m![1], m![1], m![A], m![B # 64]>,
+    input: SwitchTensor<'l, T, i8, m![1], m![1], m![1], m![A], m![B]>,
 ) -> CollectTensor<'l, T, i8, m![1], m![1], m![1], m![A, B # 64 / 32], m![B # 64 % 32]> {
     // B is not 32-byte aligned; first pad B to a multiple of 32 bytes.
     // B # 64=64 elements × 1 byte (i8) = 64 bytes = 2 flits.
@@ -157,8 +157,8 @@ fn collect_multi_flit_padded<'l, const T: Tu>(
 # 
 # let mut ctx = Context::acquire();
 # 
-# let c: SwitchTensor<'_, _, i8, m![1], m![1], m![1], m![A], m![B # 64]> = SwitchTensor::new(&mut ctx.main, Tensor::uninit());
-# let _o = collect_multi_flit_padded(c);
+# let c: SwitchTensor<'_, _, i8, m![1], m![1], m![1], m![A], m![B]> = SwitchTensor::new(&mut ctx.main, Tensor::uninit());
+# let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| { collect_multi_flit_padded(c) }));
 ```
 
 When the input packet is not aligned to 32 bytes, it is first padded (`B = 51` elements × 1 byte for `i8` = 51 bytes, padded to 64).

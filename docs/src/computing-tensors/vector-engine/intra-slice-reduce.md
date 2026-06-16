@@ -158,7 +158,7 @@ If `InnerTime::SIZE` exceeds 8, the API rejects the call. For example:
 # #![feature(adt_const_params)]
 # extern crate furiosa_opt_std;
 # use furiosa_opt_std::prelude::*;
-# axes![A = 6, B = 8, R = 16];
+# axes![A = 6, B = 16, R = 16];
 fn invalid_too_many_slots<'l, const T: Tu>(
     input: VectorBranchTensor<'l, T, i32, m![1], m![1], m![A / 3], m![R, A % 3, B % 4], m![B / 4 # 8], i32, NoTensor, { stage::VeOrder::IntraFirst }>,
 ) -> VectorIntraSliceReduceTensor<'l, T, i32, m![1], m![1], m![A / 3], m![A % 3, B % 4], m![B / 4], i32, NoTensor, { stage::VeOrder::IntraFirst }>
