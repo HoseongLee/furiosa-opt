@@ -598,7 +598,8 @@ fn read_incompatible<'l>(
 }
 #
 # let buf_read = BufTensor::<i8, m![A % 5, A / 5]>::from_buf(vec![1i8; 15]);
-# let _stream = read_incompatible(&buf_read);
+# let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| { read_incompatible(&buf_read) }));
+# assert!(result.is_err());
 ```
 
 `Buf` decomposes `A` as `5 × 3` while the stream decomposes it as `3 × 5`.
