@@ -34,6 +34,20 @@ pub enum PackSizeRule {
     OneorTwoFlit,
 }
 
+impl PackSizeRule {
+    fn check_is_allowed_packet_size(&self, packet_size: usize) {
+        assert!(
+            match self {
+                PackSizeRule::NoRule => true,
+                PackSizeRule::EightByteAlign => packet_size % 8 == 0,
+                PackSizeRule::OneFlit => packet_size == 32,
+                PackSizeRule::OneorTwoFlit => packet_size == 32 || packet_size == 64,
+            },
+            "Packet size constraint not satisfied"
+        );
+    }
+}
+
 /// Marker trait for pipeline position of Tensor Unit tensors.
 ///
 /// Position does not contain Vector Engine position: VectorTensor has its own typestate.
@@ -78,17 +92,7 @@ impl<'l, const T: Tu, P: Position, D: Scalar, Chip: M, Cluster: M, Slice: M, Tim
         assert_eq!(Cluster::SIZE, 2, "Cluster size must be 2, got {}", Cluster::SIZE);
         assert_eq!(Slice::SIZE, 256, "Slice size must be 256, got {}", Slice::SIZE);
 
-        let packet_size = D::size_in_bytes_from_length(Packet::SIZE);
-
-        assert!(
-            match P::SIZE_RULE {
-                PackSizeRule::NoRule => true,
-                PackSizeRule::EightByteAlign => packet_size % 8 == 0,
-                PackSizeRule::OneFlit => packet_size == 32,
-                PackSizeRule::OneorTwoFlit => packet_size == 32 || packet_size == 64,
-            },
-            "Packet size constraint not satisfied"
-        );
+        P::SIZE_RULE.check_is_allowed_packet_size(D::size_in_bytes_from_length(Packet::SIZE));
 
         Self {
             ctx,
