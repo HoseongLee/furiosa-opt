@@ -23,7 +23,7 @@ use crate::context::*;
 use crate::runtime::{Backend, CurrentBackend};
 use crate::scalar::*;
 use crate::tensor::Tensor;
-use crate::tensor::tu::{Position, TuTensor};
+use crate::tensor::tu::{Position, PackSizeRule, TuTensor};
 
 /// Number of columns in the temporal accumulator buffer.
 pub(crate) const TEMPORAL_ACCUMULATOR_COLS: usize = 32;
@@ -35,7 +35,9 @@ pub(crate) const CONTRACT_LANE_OUT_PACKET_ELEMENTS: usize = 8;
 #[derive(Debug)]
 pub struct PositionContraction;
 
-impl Position for PositionContraction {}
+impl Position for PositionContraction {
+    const SIZE_RULE: PackSizeRule = PackSizeRule::OneFlit;
+}
 
 /// Intermediate tensor after the Packet Reducer (reduce-add within `Packet`),
 /// before the Time Reducer.

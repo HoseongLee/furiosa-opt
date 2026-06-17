@@ -52,15 +52,17 @@ impl PackSizeRule {
 ///
 /// Position does not contain Vector Engine position: VectorTensor has its own typestate.
 pub trait Position: std::fmt::Debug + 'static {
-    /// Rule for the size of packet at this position
-    const SIZE_RULE: PackSizeRule = PackSizeRule::NoRule;
+    /// Enum for storing Rules for packet sizes at a certain position
+    const SIZE_RULE: PackSizeRule;
 }
 
 /// After beginning the pipeline.
 #[derive(Debug)]
 pub struct PositionBegin;
 
-impl Position for PositionBegin {}
+impl Position for PositionBegin {
+    const SIZE_RULE: PackSizeRule = PackSizeRule::NoRule;
+}
 
 /// Tensor streamed through the Tensor Unit pipeline.
 #[derive(Debug)]

@@ -11,7 +11,7 @@ use crate::context::*;
 use crate::engine::CanApplyFetch;
 use crate::runtime::{Backend, CurrentBackend};
 use crate::scalar::*;
-use crate::tensor::tu::{Position, TuTensor};
+use crate::tensor::tu::{Position, PackSizeRule, TuTensor};
 
 /// Output packet must be `FETCH_ALIGN_BYTES`-byte aligned.
 const FETCH_ALIGN_BYTES: usize = 8;
@@ -20,7 +20,9 @@ const FETCH_ALIGN_BYTES: usize = 8;
 #[derive(Debug)]
 pub struct PositionFetch;
 
-impl Position for PositionFetch {}
+impl Position for PositionFetch {
+    const SIZE_RULE: PackSizeRule = PackSizeRule::EightByteAlign;
+}
 
 /// Tensor streamed after the fetch engine.
 pub type FetchTensor<'l, const T: Tu, D, Chip, Cluster, Slice, Time, Packet, B = CurrentBackend> =

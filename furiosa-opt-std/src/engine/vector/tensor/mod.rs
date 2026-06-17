@@ -60,7 +60,7 @@ use crate::context::Tu;
 use crate::engine::CanApplyVectorInit;
 use crate::engine::vector::scalar::VeScalar;
 use crate::runtime::CurrentBackend;
-use crate::tensor::tu::{Position, TuTensor};
+use crate::tensor::tu::{Position, PackSizeRule, TuTensor};
 
 pub(crate) type VeTensorShape<Chip, Cluster, Slice, Time, Packet> =
     m![{ Chip }, { Cluster }, { Slice }, { Time }, { Packet }];
@@ -71,7 +71,9 @@ pub(crate) type VeTensorShape<Chip, Cluster, Slice, Time, Packet> =
 #[derive(Debug)]
 pub struct PositionVectorFinal;
 
-impl Position for PositionVectorFinal {}
+impl Position for PositionVectorFinal {
+    const SIZE_RULE: PackSizeRule = PackSizeRule::OneFlit;
+}
 
 /// Tensor after the vector engine (after `vector_final()`).
 pub type VectorFinalTensor<'l, const T: Tu, D, Chip, Cluster, Slice, Time, Packet, B = CurrentBackend> =

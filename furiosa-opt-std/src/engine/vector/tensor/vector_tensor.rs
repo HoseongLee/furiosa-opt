@@ -74,6 +74,9 @@ impl<'l, const T: Tu, D: VeScalar, Chip: M, Cluster: M, Slice: M, Time: M, Packe
         ctx: &'l mut TuContext<{ T }>,
         inner: Tensor<D, VeTensorShape<Chip, Cluster, Slice, Time, Packet>>,
     ) -> Self {
+        assert_eq!(Cluster::SIZE, 2, "Cluster size must be 2, got {}", Cluster::SIZE);
+        assert_eq!(Slice::SIZE, 256, "Slice size must be 256, got {}", Slice::SIZE);
+        assert_eq!(D::size_in_bytes_from_length(Packet::SIZE), 32);
         Self { ctx, inner }
     }
 }
@@ -751,6 +754,8 @@ impl<'l, const T: Tu, D: VeScalar, Chip: M, Cluster: M, Slice: M, Time: M, Packe
         inner: Tensor<D, VeTensorShape<Chip, Cluster, Slice, Time, Packet>>,
         branch_config: TagMode,
     ) -> Self {
+        assert_eq!(Cluster::SIZE, 2, "Cluster size must be 2, got {}", Cluster::SIZE);
+        assert_eq!(Slice::SIZE, 256, "Slice size must be 256, got {}", Slice::SIZE);
         assert_eq!(
             Packet::SIZE,
             8,
