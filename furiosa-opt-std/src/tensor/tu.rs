@@ -21,10 +21,16 @@ use crate::runtime::{Backend, CurrentBackend};
 use crate::scalar::*;
 use crate::tensor::Tensor;
 
+/// Enum for storing Rules for packet sizes at a certain position
+#[derive(Debug)]
 pub enum PackSizeRule {
+    /// No Rules / Constraints
     NoRule,
+    /// Packet Size must be 8bytes aligned
     EightByteAlign,
+    /// Packet Size must be exactly one flit (32bytes)
     OneFlit,
+    /// Packet Size must be exactly either one or two flit (32 or 64bytes)
     OneorTwoFlit,
 }
 
