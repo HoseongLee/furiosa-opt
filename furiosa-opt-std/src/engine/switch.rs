@@ -14,16 +14,14 @@ use crate::context::*;
 use crate::engine::{CanApplySwitch, exact_div};
 use crate::runtime::{Backend, CurrentBackend};
 use crate::scalar::*;
-use crate::tensor::tu::{Position, TuTensor};
+use crate::tensor::tu::{Position, PackSizeRule, TuTensor};
 
 /// After the switch engine.
 #[derive(Debug)]
 pub struct PositionSwitch;
 
 impl Position for PositionSwitch {
-    fn is_allowed_size(size: usize) -> bool {
-        size % 8 == 0
-    }
+    const SIZE_RULE: PackSizeRule = PackSizeRule::EightByteAlign;
 }
 
 /// Tensor streamed after the switch engine.

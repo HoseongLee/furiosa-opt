@@ -18,16 +18,14 @@ use crate::engine::{CanApplyCollect, CanApplyToTrf, CanApplyToVrf, FLIT_BYTES, a
 use crate::runtime::{Backend, CurrentBackend};
 use crate::scalar::*;
 use crate::tensor::memory::{Address, TrfAddress, TrfTensor, VrfTensor};
-use crate::tensor::tu::{Position, TuTensor};
+use crate::tensor::tu::{Position, PackSizeRule, TuTensor};
 
 /// After the switch engine's collect engine (32-byte packet normalized).
 #[derive(Debug)]
 pub struct PositionCollect;
 
 impl Position for PositionCollect {
-    fn is_allowed_size(size: usize) -> bool {
-        size == FLIT_BYTES
-    }
+    const SIZE_RULE: PackSizeRule = PackSizeRule::OneFlit;
 }
 
 /// Tensor after collect engine: packet is exactly 32 bytes (one flit).

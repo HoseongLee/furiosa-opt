@@ -13,16 +13,14 @@ use crate::engine::vector::scalar::VeScalar;
 use crate::engine::{CanApplyCast, FLIT_BYTES};
 use crate::runtime::{Backend, CurrentBackend};
 use crate::scalar::*;
-use crate::tensor::tu::{Position, TuTensor};
+use crate::tensor::tu::{Position, PackSizeRule, TuTensor};
 
 /// After the cast engine.
 #[derive(Debug)]
 pub struct PositionCast;
 
 impl Position for PositionCast {
-    fn is_allowed_size(size: usize) -> bool {
-        size == FLIT_BYTES
-    }
+    const SIZE_RULE: PackSizeRule = PackSizeRule::OneFlit;
 }
 
 /// Tensor streamed after the cast engine.

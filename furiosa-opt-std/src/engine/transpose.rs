@@ -8,7 +8,7 @@ use crate::context::*;
 use crate::engine::CanApplyTranspose;
 use crate::runtime::{Backend, CurrentBackend};
 use crate::scalar::*;
-use crate::tensor::tu::{Position, TuTensor};
+use crate::tensor::tu::{Position, PackSizeRule, TuTensor};
 
 /// Transpose engine input packet size in bytes.
 const TRANSPOSE_INPUT_BYTES: usize = 32;
@@ -36,9 +36,7 @@ const TRANSPOSE_VALID_IN_COLS_4BIT: &[usize] = &[16, 32];
 pub struct PositionTranspose;
 
 impl Position for PositionTranspose {
-    fn is_allowed_size(size: usize) -> bool {
-        size == TRANSPOSE_OUTPUT_BYTES
-    }
+    const SIZE_RULE: PackSizeRule = PackSizeRule::OneFlit;
 }
 
 /// Tensor streamed after the transpose engine.
