@@ -5,13 +5,15 @@
 
 use furiosa_mapping::*;
 use furiosa_opt_macro::primitive;
+use std::marker::PhantomData;
 
 use crate::cast::FetchCast;
 use crate::context::*;
 use crate::engine::CanApplyFetch;
 use crate::runtime::{Backend, CurrentBackend};
 use crate::scalar::*;
-use crate::tensor::tu::{Position, PackSizeRule, TuTensor};
+use crate::tensor::Tensor;
+use crate::tensor::tu::{Position, TuTensor};
 
 /// Output packet must be `FETCH_ALIGN_BYTES`-byte aligned.
 const FETCH_ALIGN_BYTES: usize = 8;
@@ -20,13 +22,36 @@ const FETCH_ALIGN_BYTES: usize = 8;
 #[derive(Debug)]
 pub struct PositionFetch;
 
-impl Position for PositionFetch {
-    const SIZE_RULE: PackSizeRule = PackSizeRule::EightByteAlign;
-}
+impl Position for PositionFetch {}
 
 /// Tensor streamed after the fetch engine.
 pub type FetchTensor<'l, const T: Tu, D, Chip, Cluster, Slice, Time, Packet, B = CurrentBackend> =
     TuTensor<'l, { T }, PositionFetch, D, Chip, Cluster, Slice, Time, Packet, B>;
+
+impl<'l, const T: Tu, D: Scalar, Chip: M, Cluster: M, Slice: M, Time: M, Packet: M, B: Backend>
+    FetchTensor<'l, T, D, Chip, Cluster, Slice, Time, Packet, B>
+{
+    const fn check_constraints() {
+        assert!(Cluster::SIZE == 2, "Cluster size must be 2");
+        assert!(Slice::SIZE == 256, "Slice size must be 256");
+        assert!((D::BITS * Packet::SIZE) % 8 == 0, "total bits must be byte-aligned");
+        assert!(
+            (D::BITS * Packet::SIZE) / 8 % 8 == 0,
+            "Packet Size must be 8bytes aligned"
+        );
+    }
+
+    /// Creates a new Fetch tensor.
+    pub const fn new(ctx: &'l mut TuContext<{ T }>, inner: Tensor<D, Self::Mapping, B>) -> Self {
+        Self::check_constraints();
+
+        Self {
+            ctx,
+            inner,
+            _position: PhantomData,
+        }
+    }
+}
 
 // ANCHOR: fetch_impl
 impl<'l, const T: Tu, P: CanApplyFetch, D: Scalar, Chip: M, Cluster: M, Slice: M, Time: M, Packet: M, B: Backend>

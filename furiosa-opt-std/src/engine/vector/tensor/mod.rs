@@ -53,14 +53,17 @@ mod verify;
 
 use furiosa_mapping::*;
 use furiosa_opt_macro::primitive;
+use std::marker::PhantomData;
 pub use vector_tensor::*;
 pub use vector_tensor_pair::*;
 
-use crate::context::Tu;
+use crate::context::{Tu, TuContext};
 use crate::engine::CanApplyVectorInit;
 use crate::engine::vector::scalar::VeScalar;
-use crate::runtime::CurrentBackend;
-use crate::tensor::tu::{Position, PackSizeRule, TuTensor};
+use crate::runtime::{Backend, CurrentBackend};
+use crate::scalar::Scalar;
+use crate::tensor::Tensor;
+use crate::tensor::tu::{Position, TuTensor};
 
 pub(crate) type VeTensorShape<Chip, Cluster, Slice, Time, Packet> =
     m![{ Chip }, { Cluster }, { Slice }, { Time }, { Packet }];
@@ -71,13 +74,33 @@ pub(crate) type VeTensorShape<Chip, Cluster, Slice, Time, Packet> =
 #[derive(Debug)]
 pub struct PositionVectorFinal;
 
-impl Position for PositionVectorFinal {
-    const SIZE_RULE: PackSizeRule = PackSizeRule::OneFlit;
-}
+impl Position for PositionVectorFinal {}
 
 /// Tensor after the vector engine (after `vector_final()`).
 pub type VectorFinalTensor<'l, const T: Tu, D, Chip, Cluster, Slice, Time, Packet, B = CurrentBackend> =
     TuTensor<'l, { T }, PositionVectorFinal, D, Chip, Cluster, Slice, Time, Packet, B>;
+
+impl<'l, const T: Tu, D: Scalar, Chip: M, Cluster: M, Slice: M, Time: M, Packet: M, B: Backend>
+    VectorFinalTensor<'l, T, D, Chip, Cluster, Slice, Time, Packet, B>
+{
+    const fn check_constraints() {
+        assert!(Cluster::SIZE == 2, "Cluster size must be 2");
+        assert!(Slice::SIZE == 256, "Slice size must be 256");
+        assert!((D::BITS * Packet::SIZE) % 8 == 0, "total bits must be byte-aligned");
+        assert!((D::BITS * Packet::SIZE) / 8 == 32, "Packet Size must be 32bytes");
+    }
+
+    /// Creates a new Vector Final tensor.
+    pub fn new(ctx: &'l mut TuContext<{ T }>, inner: Tensor<D, Self::Mapping, B>) -> Self {
+        Self::check_constraints();
+
+        Self {
+            ctx,
+            inner,
+            _position: PhantomData,
+        }
+    }
+}
 
 //
 // The Vector Engine accepts only `VeScalar` inputs (hardware constraint), so

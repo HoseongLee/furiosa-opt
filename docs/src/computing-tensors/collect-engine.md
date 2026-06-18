@@ -143,7 +143,7 @@ After:    Time = m![A, B / 16]
 # #![feature(adt_const_params)]
 # extern crate furiosa_opt_std;
 # use furiosa_opt_std::prelude::*;
-axes![A = 8, B = 51];
+axes![A = 8, B = 56];
 
 fn collect_multi_flit_padded<'l, const T: Tu>(
     input: SwitchTensor<'l, T, i8, m![1], m![1 # 2], m![1 # 256], m![A], m![B]>,

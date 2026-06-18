@@ -21,48 +21,16 @@ use crate::runtime::{Backend, CurrentBackend};
 use crate::scalar::*;
 use crate::tensor::Tensor;
 
-/// Enum for storing Rules for packet sizes at a certain position
-#[derive(Debug)]
-pub enum PackSizeRule {
-    /// No Rules / Constraints
-    NoRule,
-    /// Packet Size must be 8bytes aligned
-    EightByteAlign,
-    /// Packet Size must be exactly one flit (32bytes)
-    OneFlit,
-    /// Packet Size must be exactly either one or two flit (32 or 64bytes)
-    OneorTwoFlit,
-}
-
-impl PackSizeRule {
-    fn check_is_allowed_packet_size(&self, packet_size: usize) {
-        assert!(
-            match self {
-                PackSizeRule::NoRule => true,
-                PackSizeRule::EightByteAlign => packet_size % 8 == 0,
-                PackSizeRule::OneFlit => packet_size == 32,
-                PackSizeRule::OneorTwoFlit => packet_size == 32 || packet_size == 64,
-            },
-            "Packet size constraint not satisfied"
-        );
-    }
-}
-
 /// Marker trait for pipeline position of Tensor Unit tensors.
 ///
 /// Position does not contain Vector Engine position: VectorTensor has its own typestate.
-pub trait Position: std::fmt::Debug + 'static {
-    /// Enum for storing Rules for packet sizes at a certain position
-    const SIZE_RULE: PackSizeRule;
-}
+pub trait Position: std::fmt::Debug + 'static {}
 
 /// After beginning the pipeline.
 #[derive(Debug)]
 pub struct PositionBegin;
 
-impl Position for PositionBegin {
-    const SIZE_RULE: PackSizeRule = PackSizeRule::NoRule;
-}
+impl Position for PositionBegin {}
 
 /// Tensor streamed through the Tensor Unit pipeline.
 #[derive(Debug)]
@@ -80,7 +48,7 @@ pub struct TuTensor<
 > {
     pub(crate) ctx: &'l mut TuContext<{ T }>,
     pub(crate) inner: Tensor<D, Pair<Chip, Pair<Cluster, Pair<Slice, Pair<Time, Packet>>>>, B>,
-    _position: PhantomData<P>,
+    pub(crate) _position: PhantomData<P>,
 }
 
 impl<'l, const T: Tu, P: Position, D: Scalar, Chip: M, Cluster: M, Slice: M, Time: M, Packet: M, B: Backend>
@@ -88,13 +56,23 @@ impl<'l, const T: Tu, P: Position, D: Scalar, Chip: M, Cluster: M, Slice: M, Tim
 {
     /// Mapping type alias.
     pub type Mapping = m![{ Chip }, { Cluster }, { Slice }, { Time }, { Packet }];
+}
 
-    /// Creates a new Tensor Unit tensor.
-    pub fn new(ctx: &'l mut TuContext<{ T }>, inner: Tensor<D, Self::Mapping, B>) -> Self {
-        assert_eq!(Cluster::SIZE, 2, "Cluster size must be 2, got {}", Cluster::SIZE);
-        assert_eq!(Slice::SIZE, 256, "Slice size must be 256, got {}", Slice::SIZE);
+/// Tensor streamed after the beginning.
+pub type BeginTensor<'l, const T: Tu, D, Chip, Cluster, Slice, Time, Packet, B = CurrentBackend> =
+    TuTensor<'l, { T }, PositionBegin, D, Chip, Cluster, Slice, Time, Packet, B>;
 
-        P::SIZE_RULE.check_is_allowed_packet_size(D::size_in_bytes_from_length(Packet::SIZE));
+impl<'l, const T: Tu, D: Scalar, Chip: M, Cluster: M, Slice: M, Time: M, Packet: M, B: Backend>
+    BeginTensor<'l, T, D, Chip, Cluster, Slice, Time, Packet, B>
+{
+    const fn check_constraints() {
+        assert!(Cluster::SIZE == 2, "Cluster size must be 2");
+        assert!(Slice::SIZE == 256, "Slice size must be 256");
+    }
+
+    /// Creates a new Begin tensor.
+    pub const fn new(ctx: &'l mut TuContext<{ T }>, inner: Tensor<D, Self::Mapping, B>) -> Self {
+        Self::check_constraints();
 
         Self {
             ctx,
@@ -103,7 +81,3 @@ impl<'l, const T: Tu, P: Position, D: Scalar, Chip: M, Cluster: M, Slice: M, Tim
         }
     }
 }
-
-/// Tensor streamed after the beginning.
-pub type BeginTensor<'l, const T: Tu, D, Chip, Cluster, Slice, Time, Packet, B = CurrentBackend> =
-    TuTensor<'l, { T }, PositionBegin, D, Chip, Cluster, Slice, Time, Packet, B>;

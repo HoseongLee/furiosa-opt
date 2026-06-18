@@ -6,6 +6,7 @@
 
 use furiosa_mapping::*;
 use furiosa_opt_macro::primitive;
+use std::marker::PhantomData;
 
 use crate::cast::Cast;
 use crate::context::*;
@@ -13,19 +14,40 @@ use crate::engine::vector::scalar::VeScalar;
 use crate::engine::{CanApplyCast, FLIT_BYTES};
 use crate::runtime::{Backend, CurrentBackend};
 use crate::scalar::*;
-use crate::tensor::tu::{Position, PackSizeRule, TuTensor};
+use crate::tensor::Tensor;
+use crate::tensor::tu::{Position, TuTensor};
 
 /// After the cast engine.
 #[derive(Debug)]
 pub struct PositionCast;
 
-impl Position for PositionCast {
-    const SIZE_RULE: PackSizeRule = PackSizeRule::OneFlit;
-}
+impl Position for PositionCast {}
 
 /// Tensor streamed after the cast engine.
 pub type CastTensor<'l, const T: Tu, D, Chip, Cluster, Slice, Time, Packet, B = CurrentBackend> =
     TuTensor<'l, { T }, PositionCast, D, Chip, Cluster, Slice, Time, Packet, B>;
+
+impl<'l, const T: Tu, D: Scalar, Chip: M, Cluster: M, Slice: M, Time: M, Packet: M, B: Backend>
+    CastTensor<'l, T, D, Chip, Cluster, Slice, Time, Packet, B>
+{
+    const fn check_constraints() {
+        assert!(Cluster::SIZE == 2, "Cluster size must be 2");
+        assert!(Slice::SIZE == 256, "Slice size must be 256");
+        assert!((D::BITS * Packet::SIZE) % 8 == 0, "total bits must be byte-aligned");
+        assert!((D::BITS * Packet::SIZE) / 8 == 32, "Packet Size must be 32bytes");
+    }
+
+    /// Creates a new Cast tensor.
+    pub const fn new(ctx: &'l mut TuContext<{ T }>, inner: Tensor<D, Self::Mapping, B>) -> Self {
+        Self::check_constraints();
+
+        Self {
+            ctx,
+            inner,
+            _position: PhantomData,
+        }
+    }
+}
 
 // ANCHOR: cast_impl
 //
