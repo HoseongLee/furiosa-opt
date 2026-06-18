@@ -14,6 +14,8 @@ pub mod outer;
 pub mod packet;
 pub mod time;
 
+use std::marker::PhantomData;
+
 pub use lane::LaneMode;
 pub use outer::ContractOuterTensor;
 
@@ -81,3 +83,25 @@ pub struct ContractTimeTensor<
 /// Tensor streamed after the contraction engine.
 pub type ContractTensor<'l, const T: Tu, D, Chip, Cluster, Slice, Time, Packet, B = CurrentBackend> =
     TuTensor<'l, { T }, PositionContraction, D, Chip, Cluster, Slice, Time, Packet, B>;
+
+impl<'l, const T: Tu, D: Scalar, Chip: M, Cluster: M, Slice: M, Time: M, Packet: M, B: Backend>
+    ContractTensor<'l, T, D, Chip, Cluster, Slice, Time, Packet, B>
+{
+    const fn check_constraints() {
+        assert!(Cluster::SIZE == 2, "Cluster size must be 2");
+        assert!(matches!(Slice::SIZE, 64 | 128 | 192 | 256), "Slice size must be one of 64 | 128 | 192 | 256");
+        assert!((D::BITS * Packet::SIZE) % 8 == 0, "total bits must be byte-aligned");
+        assert!((D::BITS * Packet::SIZE) / 8 == 32, "Packet Size must be 32bytes");
+    }
+
+    #[doc(hidden)]
+    pub fn new(ctx: &'l mut TuContext<{ T }>, inner: Tensor<D, Self::Mapping, B>) -> Self {
+        Self::check_constraints();
+
+        Self {
+            ctx,
+            inner,
+            _position: PhantomData,
+        }
+    }
+}

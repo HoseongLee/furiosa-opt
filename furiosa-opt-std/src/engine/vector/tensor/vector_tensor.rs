@@ -69,11 +69,14 @@ pub struct VectorInitTensor<'l, const T: Tu, D: VeScalar, Chip: M, Cluster: M, S
 impl<'l, const T: Tu, D: VeScalar, Chip: M, Cluster: M, Slice: M, Time: M, Packet: M>
     VectorInitTensor<'l, T, D, Chip, Cluster, Slice, Time, Packet>
 {
-    /// Creates a new VectorInitTensor.
+    #[doc(hidden)]
     pub fn new(
         ctx: &'l mut TuContext<{ T }>,
         inner: Tensor<D, VeTensorShape<Chip, Cluster, Slice, Time, Packet>>,
     ) -> Self {
+        assert_eq!(Cluster::SIZE, 2, "Cluster size must be 2, got {}", Cluster::SIZE);
+        assert!(matches!(Slice::SIZE, 64 | 128 | 192 | 256), "Slice size must be one of 64 | 128 | 192 | 256, got {}", Slice::SIZE);
+        assert_eq!(D::size_in_bytes_from_length(Packet::SIZE), 32);
         Self { ctx, inner }
     }
 }
@@ -745,12 +748,14 @@ pub type VectorBranchTensor<
 impl<'l, const T: Tu, D: VeScalar, Chip: M, Cluster: M, Slice: M, Time: M, Packet: M, const VE_ORDER: VeOrder>
     VectorBranchTensor<'l, T, D, Chip, Cluster, Slice, Time, Packet, D, NoTensor, VE_ORDER>
 {
-    /// Creates a new VectorBranchTensor from inner tensor and branch configuration.
+    #[doc(hidden)]
     pub fn new(
         ctx: &'l mut TuContext<{ T }>,
         inner: Tensor<D, VeTensorShape<Chip, Cluster, Slice, Time, Packet>>,
         branch_config: TagMode,
     ) -> Self {
+        assert_eq!(Cluster::SIZE, 2, "Cluster size must be 2, got {}", Cluster::SIZE);
+        assert!(matches!(Slice::SIZE, 64 | 128 | 192 | 256), "Slice size must be one of 64 | 128 | 192 | 256, got {}", Slice::SIZE);
         assert_eq!(
             Packet::SIZE,
             8,

@@ -5,6 +5,7 @@
 //! to flit-sized chunks.
 
 use std::collections::HashSet;
+use std::marker::PhantomData;
 
 use abi_stable::std_types::{RBox, Tuple2};
 use furiosa_mapping::*;
@@ -14,6 +15,7 @@ use crate::context::*;
 use crate::engine::{CanApplySwitch, exact_div};
 use crate::runtime::{Backend, CurrentBackend};
 use crate::scalar::*;
+use crate::tensor::Tensor;
 use crate::tensor::tu::{Position, TuTensor};
 
 /// After the switch engine.
@@ -663,6 +665,31 @@ impl SwitchConfig {
                     "OutTime does not match expected layout: [time0, slice0]"
                 );
             }
+        }
+    }
+}
+
+impl<'l, const T: Tu, D: Scalar, Chip: M, Cluster: M, Slice: M, Time: M, Packet: M, B: Backend>
+    SwitchTensor<'l, T, D, Chip, Cluster, Slice, Time, Packet, B>
+{
+    const fn check_constraints() {
+        assert!(Cluster::SIZE == 2, "Cluster size must be 2");
+        assert!(matches!(Slice::SIZE, 64 | 128 | 192 | 256), "Slice size must be one of 64 | 128 | 192 | 256");
+        assert!((D::BITS * Packet::SIZE) % 8 == 0, "total bits must be byte-aligned");
+        assert!(
+            (D::BITS * Packet::SIZE) / 8 % 8 == 0,
+            "Packet Size must be 8byte aligned"
+        );
+    }
+
+    #[doc(hidden)]
+    pub fn new(ctx: &'l mut TuContext<{ T }>, inner: Tensor<D, Self::Mapping, B>) -> Self {
+        Self::check_constraints();
+
+        Self {
+            ctx,
+            inner,
+            _position: PhantomData,
         }
     }
 }

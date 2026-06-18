@@ -8,7 +8,6 @@
 use abi_stable::std_types::Tuple2;
 use furiosa_mapping::*;
 
-use crate::engine::FLIT_BYTES;
 use crate::runtime::Backend;
 use crate::scalar::Scalar;
 use crate::tensor::Tensor;
@@ -51,10 +50,14 @@ pub(super) fn verify_stream_adapter<D: Scalar, Lane: M, Time: M, Packet: M, OutT
         "OutPacket must be 32 or 64 bytes (matching PackSize ∈ {{1, 2}}), got {out_packet_size} bytes"
     );
 
-    let flit_elements = D::length_from_bytes(FLIT_BYTES);
+    let flit_elements = D::length_from_bytes(out_packet_size);
     let Tuple2(out_packet_outer, out_packet_inner) = OutPacket::to_value().factorize().split_at(flit_elements);
     let out_packet_inner = out_packet_inner.normalize();
-    let expected_packet = Packet::to_value().factorize();
+
+    let packet_size = D::size_in_bytes_from_length(Packet::SIZE);
+    let Tuple2(time_outer, time_inner) = Time::to_value().factorize().split_at(out_packet_size / packet_size);
+
+    let expected_packet = time_inner.mul(Packet::to_value().factorize());
     assert_eq!(
         out_packet_inner, expected_packet,
         "`contract_outer` packet mismatch: inner flit of OutPacket != Packet: {out_packet_inner} != {expected_packet}",
@@ -66,7 +69,7 @@ pub(super) fn verify_stream_adapter<D: Scalar, Lane: M, Time: M, Packet: M, OutT
         .factorize()
         .mul(out_packet_outer.remove_padding())
         .normalize();
-    let input_time = Time::to_value().factorize();
+    let input_time = time_outer;
 
     let tiling_size = expected_time.size() / input_time.size();
     let division_terms = expected_time

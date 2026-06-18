@@ -11,12 +11,14 @@
 use abi_stable::std_types::Tuple2;
 use furiosa_mapping::*;
 use furiosa_opt_macro::primitive;
+use std::marker::PhantomData;
 
 use crate::context::*;
 use crate::engine::vector::scalar::VeScalar;
 use crate::engine::{CanApplyCollect, CanApplyToTrf, CanApplyToVrf, FLIT_BYTES, align_up, exact_div};
 use crate::runtime::{Backend, CurrentBackend};
 use crate::scalar::*;
+use crate::tensor::Tensor;
 use crate::tensor::memory::{Address, TrfAddress, TrfTensor, VrfTensor};
 use crate::tensor::tu::{Position, TuTensor};
 
@@ -29,6 +31,28 @@ impl Position for PositionCollect {}
 /// Tensor after collect engine: packet is exactly 32 bytes (one flit).
 pub type CollectTensor<'l, const T: Tu, D, Chip, Cluster, Slice, Time, Packet, B = CurrentBackend> =
     TuTensor<'l, { T }, PositionCollect, D, Chip, Cluster, Slice, Time, Packet, B>;
+
+impl<'l, const T: Tu, D: Scalar, Chip: M, Cluster: M, Slice: M, Time: M, Packet: M, B: Backend>
+    CollectTensor<'l, T, D, Chip, Cluster, Slice, Time, Packet, B>
+{
+    const fn check_constraints() {
+        assert!(Cluster::SIZE == 2, "Cluster size must be 2");
+        assert!(matches!(Slice::SIZE, 64 | 128 | 192 | 256), "Slice size must be one of 64 | 128 | 192 | 256");
+        assert!((D::BITS * Packet::SIZE) % 8 == 0, "total bits must be byte-aligned");
+        assert!((D::BITS * Packet::SIZE) / 8 == 32, "Packet Size must be 32bytes");
+    }
+
+    #[doc(hidden)]
+    pub fn new(ctx: &'l mut TuContext<{ T }>, inner: Tensor<D, Self::Mapping, B>) -> Self {
+        Self::check_constraints();
+
+        Self {
+            ctx,
+            inner,
+            _position: PhantomData,
+        }
+    }
+}
 
 // ANCHOR: collect_impl
 impl<'l, const T: Tu, P: CanApplyCollect, D: Scalar, Chip: M, Cluster: M, Slice: M, Time: M, Packet: M, B: Backend>

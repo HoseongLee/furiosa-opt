@@ -53,10 +53,15 @@ When no inter-slice exchange is needed, skip `.switch()` and call [`.collect()`]
 axes![A = 256, B = 64, C = 32];
 
 fn forwarding<'l, const T: Tu>(
-    input: FetchTensor<'l, T, f32, m![1], m![1], m![A], m![B], m![C # 32]>,
-) -> CollectTensor<'l, T, f32, m![1], m![1], m![A], m![B], m![C # 32]> {
+    input: FetchTensor<'l, T, f32, m![1], m![1 # 2], m![A], m![B], m![C]>,
+) -> CollectTensor<'l, T, f32, m![1], m![1 # 2], m![A], m![B, C / 8], m![C % 8]> {
     input.collect()
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let f: FetchTensor<'_, _, f32, m![1], m![1 # 2], m![A], m![B], m![C]> = FetchTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = forwarding(f);
 ```
 
 ### Broadcast01
@@ -93,7 +98,7 @@ Every slice sends its packet around the sub-ring, and every slice receives all `
 # #![feature(adt_const_params)]
 # extern crate furiosa_opt_std;
 # use furiosa_opt_std::prelude::*;
-axes![A = 256, B = 64, C = 63, D = 8, X = 2, Y = 2];
+axes![A = 256, B = 64, C = 63, D = 2, X = 2, Y = 2];
 
 fn broadcast01<'l, const T: Tu>(
     input: FetchTensor<'l, T, f32, m![D / 2], m![D % 2], m![A], m![B], m![C # 64]>,
@@ -106,6 +111,11 @@ fn broadcast01<'l, const T: Tu>(
         }
     )
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let f: FetchTensor<'_, _, f32, m![D / 2], m![D % 2], m![A], m![B], m![C # 64]> = FetchTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o= broadcast01(f);
 ```
 
 With `slice1 = 2` (size of broadcast `X`), `slice0 = 2` (size of broadcast `Y`), and `time0 = 4`, the compiler derives `slice2 = 64`, `time1 = 16`, and `ring_size = 4` (64 sub-rings span 256 slices).
@@ -150,8 +160,8 @@ The new `X` axis in the output `Slice` (sized `slice1`) replicates this collecte
 axes![A = 256, B = 64, C = 63, X = 4];
 
 fn broadcast1<'l, const T: Tu>(
-    input: FetchTensor<'l, T, i8, m![1], m![1], m![A], m![B], m![C # 64]>,
-) -> SwitchTensor<'l, T, i8, m![1], m![1], m![A / 32, X, A % 8], m![B, A / 8 % 4], m![C # 64]> {
+    input: FetchTensor<'l, T, i8, m![1], m![1 # 2], m![A], m![B], m![C # 64]>,
+) -> SwitchTensor<'l, T, i8, m![1], m![1 # 2], m![A / 32, X, A % 8], m![B, A / 8 % 4], m![C # 64]> {
     input.switch::<m![A / 32, X, A % 8], m![B, A / 8 % 4]>(
         SwitchConfig::Broadcast1 {
             slice1: 4,
@@ -159,6 +169,11 @@ fn broadcast1<'l, const T: Tu>(
         }
     )
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let f: FetchTensor<'_, _, i8, m![1], m![1 # 2], m![A], m![B], m![C # 64]> = FetchTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = broadcast1(f);
 ```
 
 With `slice1 = 4` (size of broadcast `X`) and `slice0 = 8`, the compiler derives `slice2 = 8` and `ring_size = 32` (8 sub-rings span 256 slices).
@@ -194,13 +209,18 @@ Each sub-ring spans `slice0 × slice1` slices and circulates data so every slice
 axes![A = 256, B = 64, C = 63];
 
 fn transpose<'l, const T: Tu>(
-    input: FetchTensor<'l, T, i8, m![1], m![1], m![A], m![B], m![C # 64]>,
-) -> SwitchTensor<'l, T, i8, m![1], m![1], m![A / 64, A % 2, A / 2 % 32], m![B], m![C # 64]> {
+    input: FetchTensor<'l, T, i8, m![1], m![1 # 2], m![A], m![B], m![C # 64]>,
+) -> SwitchTensor<'l, T, i8, m![1], m![1 # 2], m![A / 64, A % 2, A / 2 % 32], m![B], m![C # 64]> {
     input.switch::<m![A / 64, A % 2, A / 2 % 32], m![B]>(SwitchConfig::Transpose {
         slice1: 32,
         slice0: 2,
     })
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let f: FetchTensor<'_, _, i8, m![1], m![1 # 2], m![A], m![B], m![C # 64]> = FetchTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = transpose(f);
 ```
 
 With `slice1 = 32` and `slice0 = 2`, the compiler derives `slice2 = 4` and `ring_size = 64` (4 sub-rings span 256 slices).
@@ -250,8 +270,8 @@ Each sub-ring spans `slice1 × slice0` slices and circulates data over `time1` t
 axes![A = 256, B = 8, C = 32];
 
 fn inter_transpose<'l, const T: Tu>(
-    input: FetchTensor<'l, T, i8, m![1], m![1], m![A], m![B], m![C # 32]>,
-) -> SwitchTensor<'l, T, i8, m![1], m![1], m![A / 32, B / 2 % 2, A % 16], m![B / 4, B % 2, A / 16 % 2], m![C # 32]> {
+    input: FetchTensor<'l, T, i8, m![1], m![1 # 2], m![A], m![B], m![C # 32]>,
+) -> SwitchTensor<'l, T, i8, m![1], m![1 # 2], m![A / 32, B / 2 % 2, A % 16], m![B / 4, B % 2, A / 16 % 2], m![C # 32]> {
     input.switch::<m![A / 32, B / 2 % 2, A % 16], m![B / 4, B % 2, A / 16 % 2]>(
         SwitchConfig::InterTranspose {
             slice1: 2,
@@ -259,6 +279,11 @@ fn inter_transpose<'l, const T: Tu>(
             time0: 2,
         })
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let f: FetchTensor<'_, _, i8, m![1], m![1 # 2], m![A], m![B], m![C # 32]> = FetchTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = inter_transpose(f);
 ```
 
 With `slice1 = 2`, `slice0 = 16`, and `time0 = 2`, the compiler derives `slice2 = 8`, `time2 = 2`, and `ring_size = 32` (8 sub-rings span 256 slices).
@@ -301,8 +326,8 @@ Each sub-ring spans `slice0 × slice1` slices and circulates data so every slice
 axes![A = 256, B = 16, C = 32, Y = 8];
 
 fn transposed_broadcast1<'l, const T: Tu>(
-    input: FetchTensor<'l, T, i8, m![1], m![1], m![A], m![B], m![C # 32]>,
-) -> SwitchTensor<'l, T, i8, m![1], m![1], m![A / 64, Y, A / 8 % 8], m![B, A % 8], m![C # 32]> {
+    input: FetchTensor<'l, T, i8, m![1], m![1 # 2], m![A], m![B], m![C # 32]>,
+) -> SwitchTensor<'l, T, i8, m![1], m![1 # 2], m![A / 64, Y, A / 8 % 8], m![B, A % 8], m![C # 32]> {
     input.switch::<m![A / 64, Y, A / 8 % 8], m![B, A % 8]>(
         SwitchConfig::TransposedBroadcast1 {
             slice1: 8,
@@ -310,6 +335,11 @@ fn transposed_broadcast1<'l, const T: Tu>(
         }
     )
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let f: FetchTensor<'_, _, i8, m![1], m![1 # 2], m![A], m![B], m![C # 32]> = FetchTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = transposed_broadcast1(f);
 ```
 
 With `slice1 = 8` and `slice0 = 8` (size of broadcast `Y`), the compiler derives `slice2 = 4` and `ring_size = 64` (4 sub-rings span 256 slices).
@@ -442,12 +472,17 @@ This example reverses the four innermost slice sub-dimensions (`A / 4, A % 4, B 
 axes![A = 16, B = 16, C = 8, D = 8, E = 8];
 
 fn arbitrary_permutation<'l, const T: Tu>(
-    input: FetchTensor<'l, T, f32, m![1], m![1], m![A, B], m![C], m![D, E]>,
-) -> SwitchTensor<'l, T, f32, m![1], m![1], m![B % 4, B / 4, A % 4, A / 4], m![C], m![D, E]> {
+    input: FetchTensor<'l, T, f32, m![1], m![1 # 2], m![A, B], m![C], m![D, E]>,
+) -> SwitchTensor<'l, T, f32, m![1], m![1 # 2], m![B % 4, B / 4, A % 4, A / 4], m![C], m![D, E]> {
     input.switch::<m![B % 4, B / 4, A % 4, A / 4], m![C]>(
         SwitchConfig::CustomBroadcast { ring_size: 256 }
     )
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let f: FetchTensor<'_, _, f32, m![1], m![1 # 2], m![A, B], m![C], m![D, E]> = FetchTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = arbitrary_permutation(f);
 ```
 
 The output `Slice = m![B % 4, B / 4, A % 4, A / 4]` permutes the input slice shape `[0, 1, 2, 3]` into `[3, 2, 1, 0]`, which no regular configuration covers but a custom bitmap does.
@@ -482,12 +517,17 @@ Unlike Example 1's pure permutation, this example moves two non-contiguous dimen
 axes![A = 16, B = 16, C = 8, D = 8, E = 8, X = 2, Y = 2];
 
 fn multi_axis_broadcast<'l, const T: Tu>(
-    input: FetchTensor<'l, T, f32, m![1], m![1], m![A, B], m![C], m![D, E]>,
-) -> SwitchTensor<'l, T, f32, m![1], m![1], m![A / 2, X, B / 2, Y], m![C, A % 2, B % 2], m![D, E]> {
+    input: FetchTensor<'l, T, f32, m![1], m![1 # 2], m![A, B], m![C], m![D, E]>,
+) -> SwitchTensor<'l, T, f32, m![1], m![1 # 2], m![A / 2, X, B / 2, Y], m![C, A % 2, B % 2], m![D, E]> {
     input.switch::<m![A / 2, X, B / 2, Y], m![C, A % 2, B % 2]>(
         SwitchConfig::CustomBroadcast { ring_size: 32 }
     )
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let f: FetchTensor<'_, _, f32, m![1], m![1 # 2], m![A, B], m![C], m![D, E]> = FetchTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = multi_axis_broadcast(f);
 ```
 
 The output moves `A % 2` and `B % 2` from `Slice` to `Time`, broadcasting at their original positions via the broadcast dimensions `X` and `Y`.
@@ -520,12 +560,17 @@ Unlike Examples 1 and 2, which include every value of the moved dimensions, here
 axes![A = 16, B = 16, C = 8, D = 8, E = 8, X = 4];
 
 fn partial_axis_extraction<'l, const T: Tu>(
-    input: FetchTensor<'l, T, f32, m![1], m![1], m![A, B], m![C], m![D, E]>,
-) -> SwitchTensor<'l, T, f32, m![1], m![1], m![A, B / 4, X], m![C, B % 4 = 3], m![D, E]> {
+    input: FetchTensor<'l, T, f32, m![1], m![1 # 2], m![A, B], m![C], m![D, E]>,
+) -> SwitchTensor<'l, T, f32, m![1], m![1 # 2], m![A, B / 4, X], m![C, B % 4 = 3], m![D, E]> {
     input.switch::<m![A, B / 4, X], m![C, B % 4 = 3]>(
         SwitchConfig::CustomBroadcast { ring_size: 4 }
     )
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let f: FetchTensor<'_, _, f32, m![1], m![1 # 2], m![A, B], m![C], m![D, E]> = FetchTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = partial_axis_extraction(f);
 ```
 
 The output moves `B % 4` from `Slice` to `Time` with broadcast at the original position, and the fourth value (`B % 4 = 3`) is discarded so only the first 3 are extracted.

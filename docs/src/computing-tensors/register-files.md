@@ -43,8 +43,8 @@ axes![V = 32, M = 32, N = 8, K = 32];
 
 type Chip    = m![1];
 type Cluster = m![V / 16];
-type Slice   = m![V % 16];
-type Lane     = m![N];
+type Slice   = m![V % 16 # 256];
+type Lane    = m![N];
 
 /// Stores matmul weights into TRF for consumption by `bmatmul` in
 /// [Contraction Engine: Example: Batched MatMul](./contraction-engine/index.md#example-batched-matmul).
@@ -53,6 +53,11 @@ fn store_bmatmul_trf<'l, const T: Tu>(
 ) -> TrfTensor<bf16, Chip, Cluster, Slice, Lane, m![K]> {
     input.to_trf(TrfAddress::FirstHalf)
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let c: CollectTensor<'_, _, bf16, Chip, Cluster, Slice, m![N, K / 16], m![K % 16]> = CollectTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = store_bmatmul_trf(c);
 ```
 
 #### From Data Memory
@@ -152,6 +157,11 @@ fn store_vrf<'l, const T: Tu>(
 ) -> VrfTensor<i32, m![1], m![1 # 2], m![1 # 256], m![B]> {
     input.to_vrf(0)
 }
+# 
+# let mut ctx = Context::acquire();
+# 
+# let c: CollectTensor<'_, _, i32, m![1], m![1 # 2], m![1 # 256], m![B / 8], m![B % 8]> = CollectTensor::new(&mut ctx.main, Tensor::uninit());
+# let _o = store_vrf(c);
 ```
 
 #### From Data Memory
