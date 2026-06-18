@@ -53,7 +53,7 @@ impl<'l, const T: Tu, D: Scalar, Chip: M, Cluster: M, Slice: M, Time: M, Packet:
         assert!((D::BITS * Packet::SIZE) / 8 == 32, "Packet Size must be 32bytes");
     }
 
-    /// Creates a new Transpose tensor.
+    #[doc(hidden)]
     pub fn new(ctx: &'l mut TuContext<{ T }>, inner: Tensor<D, Self::Mapping, B>) -> Self {
         Self::check_constraints();
 

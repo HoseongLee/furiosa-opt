@@ -682,7 +682,7 @@ impl<'l, const T: Tu, D: Scalar, Chip: M, Cluster: M, Slice: M, Time: M, Packet:
         );
     }
 
-    /// Creates a new Switch tensor.
+    #[doc(hidden)]
     pub fn new(ctx: &'l mut TuContext<{ T }>, inner: Tensor<D, Self::Mapping, B>) -> Self {
         Self::check_constraints();
 

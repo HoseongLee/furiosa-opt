@@ -69,7 +69,7 @@ pub struct VectorInitTensor<'l, const T: Tu, D: VeScalar, Chip: M, Cluster: M, S
 impl<'l, const T: Tu, D: VeScalar, Chip: M, Cluster: M, Slice: M, Time: M, Packet: M>
     VectorInitTensor<'l, T, D, Chip, Cluster, Slice, Time, Packet>
 {
-    /// Creates a new VectorInitTensor.
+    #[doc(hidden)]
     pub fn new(
         ctx: &'l mut TuContext<{ T }>,
         inner: Tensor<D, VeTensorShape<Chip, Cluster, Slice, Time, Packet>>,
@@ -748,7 +748,7 @@ pub type VectorBranchTensor<
 impl<'l, const T: Tu, D: VeScalar, Chip: M, Cluster: M, Slice: M, Time: M, Packet: M, const VE_ORDER: VeOrder>
     VectorBranchTensor<'l, T, D, Chip, Cluster, Slice, Time, Packet, D, NoTensor, VE_ORDER>
 {
-    /// Creates a new VectorBranchTensor from inner tensor and branch configuration.
+    #[doc(hidden)]
     pub fn new(
         ctx: &'l mut TuContext<{ T }>,
         inner: Tensor<D, VeTensorShape<Chip, Cluster, Slice, Time, Packet>>,

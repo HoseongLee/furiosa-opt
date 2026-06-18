@@ -70,8 +70,8 @@ impl<'l, const T: Tu, D: Scalar, Chip: M, Cluster: M, Slice: M, Time: M, Packet:
         assert!(Slice::SIZE % 64 == 0 && Slice::SIZE <= 256, "Slice size must be one of 64 | 128 | 192 | 256");
     }
 
-    /// Creates a new Begin tensor.
-    pub const fn new(ctx: &'l mut TuContext<{ T }>, inner: Tensor<D, Self::Mapping, B>) -> Self {
+    #[doc(hidden)]
+    pub fn new(ctx: &'l mut TuContext<{ T }>, inner: Tensor<D, Self::Mapping, B>) -> Self {
         Self::check_constraints();
 
         Self {
