@@ -85,7 +85,7 @@ impl<'l, const T: Tu, D: Scalar, Chip: M, Cluster: M, Slice: M, Time: M, Packet:
 {
     const fn check_constraints() {
         assert!(Cluster::SIZE == 2, "Cluster size must be 2");
-        assert!(Slice::SIZE == 256, "Slice size must be 256");
+        assert!(Slice::SIZE % 64 == 0 && Slice::SIZE <= 256, "Slice size must be one of 64 | 128 | 192 | 256");
         assert!((D::BITS * Packet::SIZE) % 8 == 0, "total bits must be byte-aligned");
         assert!((D::BITS * Packet::SIZE) / 8 == 32, "Packet Size must be 32bytes");
     }

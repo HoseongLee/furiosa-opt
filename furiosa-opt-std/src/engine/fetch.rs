@@ -33,7 +33,7 @@ impl<'l, const T: Tu, D: Scalar, Chip: M, Cluster: M, Slice: M, Time: M, Packet:
 {
     const fn check_constraints() {
         assert!(Cluster::SIZE == 2, "Cluster size must be 2");
-        assert!(Slice::SIZE == 256, "Slice size must be 256");
+        assert!(Slice::SIZE % 64 == 0 && Slice::SIZE <= 256, "Slice size must be one of 64 | 128 | 192 | 256");
         assert!((D::BITS * Packet::SIZE) % 8 == 0, "total bits must be byte-aligned");
         assert!(
             (D::BITS * Packet::SIZE) / 8 % 8 == 0,
@@ -75,7 +75,7 @@ impl<'l, const T: Tu, P: CanApplyFetch, D: Scalar, Chip: M, Cluster: M, Slice: M
 /// output packet is `FETCH_ALIGN_BYTES`-byte aligned.
 fn verify_fetch<D2: Scalar, Cluster: M, Slice: M, Packet2: M>() {
     assert_eq!(Cluster::SIZE, 2, "Cluster size must be 2, got {}", Cluster::SIZE);
-    assert_eq!(Slice::SIZE, 256, "Slice size must be 256, got {}", Slice::SIZE);
+    assert!(Slice::SIZE % 64 == 0 && Slice::SIZE <= 256, "Slice size must be one of 64 | 128 | 192 | 256, got {}", Slice::SIZE);
     let packet_bytes = D2::size_in_bytes_from_length(Packet2::SIZE);
     assert_eq!(
         packet_bytes % FETCH_ALIGN_BYTES,
